@@ -44,7 +44,7 @@
 
 #include <NodeConfig.h>
 #include <NodeMessages.pb.h>
-#include <zmq.hpp>
+#include "zmq.hpp"
 #include "ZeroConf.h"
 
 static const std::string kTopicScheme = "topic://";
