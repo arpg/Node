@@ -53,6 +53,12 @@ endif()
 
 include_directories(${PROJ_INCLUDE_DIRS})
 
+if(ANDROID)
+    # Override to use hosts protoc compiler
+    unset(PROTOBUF_PROTOC_EXECUTABLE CACHE)
+    find_host_package( Protobuf REQUIRED)
+endif()
+
 PROTOBUF_GENERATE_CPP(PROTO_HDRS PROTO_SRCS NodeMessages.proto)
 
 set(NODE_HDRS Node.h ZeroConf.h ${PROTO_HDRS})
