@@ -467,7 +467,6 @@ bool node::receive(const std::string& resource, zmq::message_t& ZmqMsg) {
     return false;
   }
   else {
-    std::cout<<"Found a thing"<<std::endl;
     NodeSocket socket = it->second;
 
     std::lock_guard<std::mutex> lock(*topic_mutex_[sTopicResource]);
@@ -982,6 +981,7 @@ bool node::ConnectNode(const std::string& host, uint16_t port,
   for (const msg::ResourceLocator& r : rep->resource_table().urls()) {
     resource_table_[r.resource()] = r.address();
   }
+  _PropagateResourceTable();
   return true;
 }
 
