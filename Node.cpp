@@ -391,7 +391,6 @@ bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
     // no socket found
     return false;
   } else {
-    std::cerr << "else block" << std::endl;
     NodeSocket socket = it->second;
 
     std::lock_guard<std::mutex> lock(*topic_mutex_[sTopicResource]);
@@ -401,7 +400,6 @@ bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
     // double dStartTime =_TicMS();
 
     try {
-      std::cerr<<Msg.size();
       return socket->send(Msg);
     } catch(const zmq::error_t& error) {
       LOG(WARNING) << "Error sending the message for topic " << sTopic;
