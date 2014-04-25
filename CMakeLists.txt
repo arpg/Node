@@ -102,8 +102,9 @@ file( REMOVE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake" )
 export(TARGETS ${LIBRARY_NAME}
   APPEND FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake")
 
-# We always export the project
-export(PACKAGE ${PROJECT_NAME})
+if(EXPORT_NODE)
+  export(PACKAGE ${PROJECT_NAME})
+endif()
 
 #######################################################
 ## Install headers / targets
