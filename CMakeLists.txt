@@ -130,5 +130,7 @@ INSTALL(
 
 install( EXPORT "${PROJECT_NAME}Targets" DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
 
+# For the examples to find this and only this version of Node
+set(Node_DIR ${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(Examples)
 
