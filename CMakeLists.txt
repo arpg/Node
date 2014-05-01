@@ -1,6 +1,12 @@
+project(Node)
 cmake_minimum_required(VERSION 2.8)
 
-project(Node)
+# Add to module path, so we can find our cmake modules
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
+
+include(def_library)
+include(export_package)
+
 string( TOLOWER ${PROJECT_NAME} LIBRARY_NAME )
 
 if(CMAKE_COMPILER_IS_GNUCXX)
@@ -9,9 +15,6 @@ endif()
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter")
-
-# Add to module path, so we can find our cmake modules
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
 
 find_package(ZeroMQ QUIET)
 find_package(Protobuf QUIET)
@@ -68,11 +71,14 @@ if(ANDROID)
   list(APPEND NODE_HDRS android-ifaddrs/ifaddrs.h)
   list(APPEND NODE_SRCS android-ifaddrs/ifaddrs.c)
   include_directories(SYSTEM android-ifaddrs)
+  list(APPEND PROJ_INCLUDE_DIRS android-ifaddrs)
 endif()
 
-add_library(${LIBRARY_NAME} ${NODE_HDRS} ${NODE_SRCS})
-target_link_libraries(${LIBRARY_NAME} ${PROJ_LIBRARIES})
-target_link_libraries(${LIBRARY_NAME} miniglog)
+def_library(${LIBRARY_NAME}
+  SOURCES ${NODE_HDRS} ${NODE_SRCS}
+  LINK_LIBS ${PROJ_LIBRARIES} miniglog
+  PACKAGE Node
+  )
 
 # Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
@@ -82,55 +88,15 @@ set(EXPORT_NODE_INC
   ${ZeroMQ_INCLUDE_DIRS}
   )
 
-configure_file(${Node_SOURCE_DIR}/NodeConfig.cmake.in
-  ${Node_BINARY_DIR}/NodeConfig.cmake @ONLY)
-
-set( EXPORT_LIB_INC_DIR "${LIB_INC_DIR}" )
-configure_file( "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" @ONLY IMMEDIATE )
-
-set( EXPORT_LIB_INC_DIR "\${${PROJECT_NAME}_CMAKE_DIR}/${REL_INCLUDE_DIR}" )
-configure_file( "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${PROJECT_NAME}Config.cmake" @ONLY )
-
-# Version information
-configure_file("${PROJECT_NAME}ConfigVersion.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake" @ONLY)
-
-# Add module to CMake package registery.
-file( REMOVE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake" )
-export(TARGETS ${LIBRARY_NAME}
-  APPEND FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake")
-
-if(EXPORT_NODE)
-  export(PACKAGE ${PROJECT_NAME})
-endif()
-
-#######################################################
-## Install headers / targets
-set( CMAKECONFIG_INSTALL_DIR "lib/cmake/${PROJECT_NAME}" )
+export_package(Node
+  TARGETS ${LIBRARY_NAME}
+  LIBRARY ${LIBRARY_NAME}
+  LIBRARIES ${LIBRARY_NAME}
+  INCLUDE_DIRS ${EXPORT_NODE_INC}
+  )
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h"
   DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${LIBRARY_NAME}
   )
-install(TARGETS ${LIBRARY_NAME}
-  EXPORT "${PROJECT_NAME}Targets"
-  RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-  LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-  )
-
-#######################################################
-## Install CMake config
-
-INSTALL(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${PROJECT_NAME}Config.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-  DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
-
-install( EXPORT "${PROJECT_NAME}Targets" DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
-
-# For the examples to find this and only this version of Node
-set(Node_DIR ${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(Examples)
 
