@@ -98,5 +98,8 @@ export_package(Node
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h"
   DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${LIBRARY_NAME}
   )
+
+# For the examples to find this and only this version of Node
+set(Node_DIR ${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(Examples)
 
