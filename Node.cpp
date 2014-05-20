@@ -949,8 +949,6 @@ void node::_UpdateNodeRegistery() {
 
 bool node::ConnectNode(const std::string& host, uint16_t port,
                        msg::GetTableResponse* rep) {
-  // Skip if we are already connected to this node
-  if (resource_table_.count(_GetAddress(host, port))) return false;
   LOG(debug_level_) << "Connecting to " << host << ":" << port;
 
   std::string zmq_addr = _ZmqAddress(host, port);
