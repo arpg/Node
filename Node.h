@@ -62,8 +62,8 @@ std::function<void(std::shared_ptr<google::protobuf::Message>)> TopicCallback;
 
 struct RPC {
   RPCFunction RpcFunc;
-  google::protobuf::Message* ReqMsg;
-  google::protobuf::Message* RepMsg;
+  std::shared_ptr<google::protobuf::Message> ReqMsg;
+  std::shared_ptr<google::protobuf::Message> RepMsg;
   void* UserData;
 };
 
@@ -126,8 +126,8 @@ class node {
     auto data = std::make_shared<RpcData>();
     auto rpc = std::make_shared<RPC>();
     rpc->RpcFunc = (FuncPtr)pFunc;
-    rpc->ReqMsg = new Req;
-    rpc->RepMsg = new Rep;
+    rpc->ReqMsg.reset(new Req);
+    rpc->RepMsg.reset(new Rep);
     rpc->UserData = pUserData;
     data->rpc = rpc;
     rpc_[sName] = data;

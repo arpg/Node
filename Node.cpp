@@ -780,8 +780,8 @@ void node::RPCThread() {
     if (rpc_it != rpc_.end() && rpc_it->second->rpc) {
       auto rpc = rpc_it->second->rpc;
       RPCFunction& Func = rpc->RpcFunc;
-      google::protobuf::Message* Req = rpc->ReqMsg;
-      google::protobuf::Message* Rep = rpc->RepMsg;
+      const auto& Req = rpc->ReqMsg;
+      const auto& Rep = rpc->RepMsg;
 
       Rep->Clear();
 
