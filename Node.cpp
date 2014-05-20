@@ -19,6 +19,9 @@ std::vector<node::node*> g_vNodes;
 
 namespace node {
 
+const std::string node::kTopicScheme = "topic://";
+const std::string node::kRpcScheme = "rpc://";
+
 /// used to time socket communications
 struct TimedNodeSocket {
   TimedNodeSocket() {}
@@ -450,7 +453,8 @@ bool node::receive(const std::string& resource,
                    google::protobuf::Message& Msg) {
     zmq::message_t ZmqMsg;
 
-    return receive(resource,ZmqMsg) && Msg.ParseFromArray(ZmqMsg.data(), ZmqMsg.size());
+    return receive(resource, ZmqMsg) &&
+        Msg.ParseFromArray(ZmqMsg.data(), ZmqMsg.size());
 }
 
 bool node::receive(const std::string& resource, zmq::message_t& ZmqMsg) {

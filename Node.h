@@ -47,9 +47,6 @@
 #include "zmq.hpp"
 #include "ZeroConf.h"
 
-static const std::string kTopicScheme = "topic://";
-static const std::string kRpcScheme = "rpc://";
-
 typedef std::shared_ptr<zmq::socket_t> NodeSocket;
 
 typedef void(*FuncPtr)(google::protobuf::Message&,
@@ -90,6 +87,9 @@ struct TimedNodeSocket;
 zmq::context_t* _InitSingleton();
 
 class node {
+  static const std::string kTopicScheme;
+  static const std::string kRpcScheme;
+
  public:
   /// node constructor you can call wo initialization.  user MUST call
   /// init at some point.
@@ -179,23 +179,27 @@ class node {
                );
 
   /// Send data.
-  bool publish(const std::string& sTopic, //< Input: Topic to write to
-               zmq::message_t& Msg //< Input: Message to send
-               );
+  /// Input: Topic to write to
+  /// Input: Message to send
+  bool publish(const std::string& sTopic, zmq::message_t& Msg);
 
-  /// subscribe to topic will open socket for read
+  /// Subscribe to a topic being advertised by another node
+  /// @param [in] Node resource: "NodeName/Topic"
+  bool subscribe(const std::string& sResource);
+
+  /// Listen
   /// @param [in] Node resource: "NodeName/Topic"
   bool subscribe(const std::string& sResource);
 
   /// Consume data from publisher
-  bool receive(const std::string& sResource, //< Input: Node resource: "NodeName/Topic"
-               google::protobuf::Message& Msg   //< Output: Message read
-               );
+  /// Input: Node resource: "NodeName/Topic"
+  /// Output: Message read
+  bool receive(const std::string& sResource, google::protobuf::Message& Msg);
 
   /// Consume data form publisher
-  bool receive(const std::string& sResource, //< Input: Node resource: "NodeName/Topic"
-               zmq::message_t& ZmqMsg //< Output: ZMQ Output message
-               );
+  /// Input: Node resource: "NodeName/Topic"
+  /// Output: ZMQ Output message
+  bool receive(const std::string& sResource, zmq::message_t& ZmqMsg);
 
   //template<class CallbackMsg>
   //bool RegisterCallback(const std::string& resource,
