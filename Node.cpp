@@ -19,6 +19,7 @@ std::vector<node::node*> g_vNodes;
 
 namespace node {
 
+const std::string node::kListenScheme = "listen://";
 const std::string node::kTopicScheme = "topic://";
 const std::string node::kRpcScheme = "rpc://";
 
@@ -343,11 +344,11 @@ bool node::call_rpc(NodeSocket socket,
 
 bool node::advertise(const std::string& sTopic) {
   CHECK(init_done_);
-  std::string sTopicResource = kTopicScheme + node_name_ + "/" + sTopic;
+  std::string topic_resource = kTopicScheme + node_name_ + "/" + sTopic;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     // check if socket is already open for this topic
-    auto it = topics_.find(sTopicResource);
+    auto it = topics_.find(topic_resource);
     if (it != topics_.end()) {
       LOG(ERROR) << "resource socket is already open, return false";
       return false;
@@ -367,8 +368,8 @@ bool node::advertise(const std::string& sTopic) {
     data->socket = socket;
 
     std::lock_guard<std::mutex> lock(mutex_);
-    resource_table_[sTopicResource] = sAddr;
-    topics_[sTopicResource] = data;
+    resource_table_[topic_resource] = sAddr;
+    topics_[topic_resource] = data;
   }
   _PropagateResourceTable();
   return true;
@@ -387,10 +388,10 @@ bool node::publish(const std::string& sTopic,
 
 bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
   CHECK(init_done_);
-  std::string sTopicResource = kTopicScheme + node_name_ + "/" + sTopic;
+  std::string topic_resource = kTopicScheme + node_name_ + "/" + sTopic;
 
   // check if socket is already open for this topic
-  auto it = topics_.find(sTopicResource);
+  auto it = topics_.find(topic_resource);
   if (it == topics_.end()) {
     // no socket found
     return false;
@@ -412,21 +413,21 @@ bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
 
 bool node::subscribe(const std::string& resource) {
   CHECK(init_done_);
-  std::string sTopicResource = kTopicScheme + resource;
+  std::string topic_resource = kTopicScheme + resource;
   std::string resource_ip;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     // check if socket is already open for this topic
-    auto it = topics_.find(sTopicResource);
+    auto it = topics_.find(topic_resource);
     if (it != topics_.end()) {
       LOG(ERROR) << "subscription for that topic already exists";
       return false;
     }
 
     // lets find this node's IP
-    auto its = resource_table_.find(sTopicResource);
+    auto its = resource_table_.find(topic_resource);
     if (its == resource_table_.end()) {
-      LOG(debug_level_) << "Resource '" << sTopicResource
+      LOG(debug_level_) << "Resource '" << topic_resource
                         << "' not found on cache table.";
       return false;
     }
@@ -446,8 +447,43 @@ bool node::subscribe(const std::string& resource) {
   data->socket = socket;
 
   std::lock_guard<std::mutex> lock(mutex_);
-  topics_[sTopicResource] = data;
+  topics_[topic_resource] = data;
   return true;
+}
+
+bool node::listen(const std::string& topic) {
+  std::string endpoint = kListenScheme + node_name_ + "/" + topic;
+  if (resource_table_.count(endpoint)) {
+    LOG(ERROR) << "Already listening for " << endpoint;
+    return false;
+  }
+
+  auto data = std::make_shared<ListenData>();
+  data->socket.reset(new zmq::socket_t(*context_, ZMQ_SUB));
+  data->socket->setsockopt(ZMQ_SUBSCRIBE, NULL, 0);
+  int port = _BindRandomPort(data->socket);
+  resource_table_[endpoint] = _GetAddress(host_ip_, port);
+  listen_data_[topic] = data;
+
+  return true;
+}
+
+bool node::listen(const std::string& topic, uint16_t port) {
+  std::string endpoint = kListenScheme + node_name_ + "/" + topic;
+  if (resource_table_.count(endpoint)) {
+    LOG(ERROR) << "Already listening for " << endpoint;
+    return false;
+  }
+
+  auto data = std::make_shared<ListenData>();
+  data->socket.reset(new zmq::socket_t(*context_, ZMQ_SUB));
+  data->socket->setsockopt(ZMQ_SUBSCRIBE, NULL, 0);
+  bool success = _BindPort(port, data->socket);
+  if (success) {
+    resource_table_[endpoint] = _GetAddress(host_ip_, port);
+    listen_data_[topic] = data;
+  }
+  return success;
 }
 
 bool node::receive(const std::string& resource,
@@ -460,28 +496,40 @@ bool node::receive(const std::string& resource,
 
 bool node::receive(const std::string& resource, zmq::message_t& ZmqMsg) {
   CHECK(init_done_);
-  std::string sTopicResource = kTopicScheme + resource;
+  std::string topic_resource = kTopicScheme + resource;
+
   // check if socket is already open for this topic
-  auto it = topics_.find(sTopicResource);
-  if (it == topics_.end()) {
-    LOG(debug_level_) << "Can't receive on topic '" << resource << "'. "
-                         "Did you subscribe to it?";
+  auto topic_it = topics_.find(topic_resource);
+  auto listen_it = listen_data_.find(resource);
+  NodeSocket socket;
+  std::shared_ptr<ListenData> listen_data;
+  std::shared_ptr<TopicData> topic_data;
+
+  std::unique_lock<std::mutex> lock;
+  if (topic_it != topics_.end()) {
+    topic_data = topic_it->second;
+    socket = topic_data->socket;
+    lock = std::unique_lock<std::mutex>(topic_data->mutex);
+  } else if (listen_it != listen_data_.end()) {
+    listen_data = listen_it->second;
+    socket = listen_data->socket;
+    lock = std::unique_lock<std::mutex>(listen_data->mutex);
+  } else {
+    LOG(ERROR) << "Can't receive on topic '" << resource
+               << "'. Did you subscribe to it?";
     // no socket found
     return false;
   }
-  else {
-    const NodeSocket& socket = it->second->socket;
 
-    std::lock_guard<std::mutex> lock(it->second->mutex);
-    socket->setsockopt(
-        ZMQ_RCVTIMEO, &send_recv_max_wait_, sizeof(send_recv_max_wait_));
-    try {
-      return socket->recv(&ZmqMsg);
-    } catch(const zmq::error_t& error) {
-      LOG(WARNING) << "Error receiving zmq packet: "<< error.what();
-      return false;
-    }
+  socket->setsockopt(
+      ZMQ_RCVTIMEO, &send_recv_max_wait_, sizeof(send_recv_max_wait_));
+  try {
+    return socket->recv(&ZmqMsg);
+  } catch(const zmq::error_t& error) {
+    LOG(WARNING) << "Error receiving zmq packet: "<< error.what();
+    return false;
   }
+  return true;
 }
 
 std::string node::_GetHostIP(const std::string& sPreferredInterface) {
@@ -812,10 +860,10 @@ void node::TopicThread(const std::string& resource)
   CHECK(init_done_);
   LOG(debug_level_) << "Thread for '" << resource << "' started.";
 
-  std::string sTopicResource = kTopicScheme + resource;
+  std::string topic_resource = kTopicScheme + resource;
 
   const std::shared_ptr<TopicCallbackData>& callback_data =
-      topics_[sTopicResource]->callback;
+      topics_[topic_resource]->callback;
   std::shared_ptr<google::protobuf::Message> msg = callback_data->callback_msg_;
 
   while(!exiting_) {

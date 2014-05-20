@@ -87,8 +87,7 @@ struct TimedNodeSocket;
 zmq::context_t* _InitSingleton();
 
 class node {
-  static const std::string kTopicScheme;
-  static const std::string kRpcScheme;
+  static const std::string kTopicScheme, kRpcScheme, kListenScheme;
 
  public:
   /// node constructor you can call wo initialization.  user MUST call
@@ -190,9 +189,13 @@ class node {
   /// @param [in] Node resource: "NodeName/Topic"
   bool subscribe(const std::string& resource);
 
-  /// Listen
-  /// @param [in] Node resource: "NodeName/Topic"
-  bool subscribe(const std::string& sResource);
+  /// Listen for a given message topic on a random port
+  /// @param [in] Node resource: "Topic"
+  bool listen(const std::string& topic);
+
+  /// Listen for a given message topic on a random port
+  /// @param [in] Node resource: "Topic"
+  bool listen(const std::string& topic, uint16_t port);
 
   /// Consume data from publisher
   /// Input: Node resource: "NodeName/Topic"
@@ -387,8 +390,15 @@ class node {
     std::shared_ptr<RPC> rpc;
   };
 
+  struct ListenData {
+    //std::shared_ptr<TopicCallbackData> callback;
+    std::mutex mutex;
+    NodeSocket socket;
+  };
+
   std::map<std::string, std::shared_ptr<TopicData> > topics_;
   std::map<std::string, std::shared_ptr<RpcData> > rpc_;
+  std::map<std::string, std::shared_ptr<ListenData> > listen_data_;
 
   // for automatic server discovery
   ZeroConf zero_conf_;
