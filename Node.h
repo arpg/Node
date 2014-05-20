@@ -120,15 +120,18 @@ class node {
 
     assert(init_done_);
     // check if function with that name is already registered
-    auto it = rpc_table_.find(sName);
-    if (it != rpc_table_.end()) return false;
+    auto it = rpc_.find(sName);
+    if (it != rpc_.end()) return false;
 
-    RPC* pRPC = new RPC;
-    pRPC->RpcFunc = (FuncPtr)pFunc;
-    pRPC->ReqMsg = new Req;
-    pRPC->RepMsg = new Rep;
-    pRPC->UserData = pUserData;
-    rpc_table_[sName] = pRPC;
+    auto data = std::make_shared<RpcData>();
+    auto rpc = std::make_shared<RPC>();
+    rpc->RpcFunc = (FuncPtr)pFunc;
+    rpc->ReqMsg = new Req;
+    rpc->RepMsg = new Rep;
+    rpc->UserData = pUserData;
+    data->rpc = rpc;
+    rpc_[sName] = data;
+
     std::string rpc_resource = "rpc://" + node_name_ + "/" + sName;
     resource_table_[rpc_resource] = _GetAddress();
     return true;
@@ -162,7 +165,7 @@ class node {
   /// Make a remote procedure call like "node->func()" -- with out node name resolution.
   // this is the main API most calls boil down to.
   bool call_rpc(NodeSocket socket,
-                std::shared_ptr<std::mutex> socket_mutex,
+                std::mutex* socket_mutex,
                 const std::string& function,  //< Input: Remote function to call
                 const google::protobuf::Message& msg_req,     //< Input: Protobuf message request
                 google::protobuf::Message& msg_rep,     //< Output: Protobuf message reply
@@ -171,21 +174,21 @@ class node {
 
   ///  Tell all other nodes we publish this topic
   /// Input: Topic name
-  bool advertise(const std::string& sTopic);
+  bool advertise(const std::string& topic);
 
   /// Send data
-  bool publish(const std::string& sTopic,     //< Input: Topic to write to
-               const google::protobuf::Message&  Msg //< Input: Message to send
+  bool publish(const std::string& topic,     //< Input: Topic to write to
+               const google::protobuf::Message&  msg //< Input: Message to send
                );
 
   /// Send data.
   /// Input: Topic to write to
   /// Input: Message to send
-  bool publish(const std::string& sTopic, zmq::message_t& Msg);
+  bool publish(const std::string& topic, zmq::message_t& msg);
 
   /// Subscribe to a topic being advertised by another node
   /// @param [in] Node resource: "NodeName/Topic"
-  bool subscribe(const std::string& sResource);
+  bool subscribe(const std::string& resource);
 
   /// Listen
   /// @param [in] Node resource: "NodeName/Topic"
@@ -194,42 +197,38 @@ class node {
   /// Consume data from publisher
   /// Input: Node resource: "NodeName/Topic"
   /// Output: Message read
-  bool receive(const std::string& sResource, google::protobuf::Message& Msg);
+  bool receive(const std::string& resource, google::protobuf::Message& msg);
 
   /// Consume data form publisher
   /// Input: Node resource: "NodeName/Topic"
   /// Output: ZMQ Output message
-  bool receive(const std::string& sResource, zmq::message_t& ZmqMsg);
+  bool receive(const std::string& resource, zmq::message_t& zmq_msg);
 
-  //template<class CallbackMsg>
-  //bool RegisterCallback(const std::string& resource,
-  //                      std::function<void(CallbackMsg&)> func);
-  template<class CallbackMsg>
-  bool RegisterCallback(const std::string &resource,
-                        TopicCallback func) {
-    std::string sTopicResource = kTopicScheme + resource;
+  template<class Callbackmsg>
+  bool RegisterCallback(const std::string &resource, TopicCallback func) {
+    std::string topicResource = kTopicScheme + resource;
 
-    auto it = topic_sockets_.find(sTopicResource);
-    if(it == topic_sockets_.end()) {
-      LOG(WARNING) << "Topic '" << resource << "' hasn't been subsribed to.";
+    auto it = topics_.find(topicResource);
+    if (it == topics_.end()) {
+      LOG(WARNING) << "Topic '" << resource << "' hasn't been subscribed to.";
       return false;
     }
 
     static_assert(
-          std::is_base_of<google::protobuf::Message, CallbackMsg>::value,
+          std::is_base_of<google::protobuf::Message, Callbackmsg>::value,
           "Value provided for template is not a protobuf message.");
     std::shared_ptr<google::protobuf::Message> msg =
-        std::make_shared<CallbackMsg>();
+        std::make_shared<Callbackmsg>();
     std::shared_ptr<TopicCallbackData> tcd =
         std::make_shared<TopicCallbackData>();
     tcd->callback_ = func;
     tcd->callback_msg_ = msg;
 
-    topic_thread_[sTopicResource] = std::thread(
-          std::bind(&node::TopicThread, this, resource));
-    topic_callback_[sTopicResource] = tcd;
+    it->second->thread = std::thread(
+        std::bind(&node::TopicThread, this, resource));
+    it->second->callback = tcd;
 
-    LOG(INFO) << "Registered callback for '" << sTopicResource << "'";
+    LOG(INFO) << "Registered callback for '" << topicResource << "'";
     return true;
   }
 
@@ -352,9 +351,9 @@ class node {
   double _TicMS();
   double _TocMS(double dMS);
   ///
-  std::string _ParseNodeName(const std::string& sResource);
+  std::string _ParseNodeName(const std::string& resource);
   ///
-  std::string _ParseRpcName(const std::string& sResource);
+  std::string _ParseRpcName(const std::string& resource);
 
   // ensure we have a connection
   void _ConnectRpcSocket(const std::string& node_name_name,
@@ -368,9 +367,6 @@ class node {
   static void _IntStringFunc(msg::String& sStr,
                              msg::Int& nInt, void* pUserData);
 
-  /** Get the mutex associated with the socket connected to a certain node */
-  std::shared_ptr<std::mutex> rpc_mutex(const std::string& node);
-
   void BuildDeleteFromTableRequest(msg::DeleteFromTableRequest* msg) const;
 
  private:
@@ -378,24 +374,21 @@ class node {
   // resource to host:port map
   std::map<std::string, std::string> resource_table_;
 
-  // resource to socket map
-  std::map<std::string, NodeSocket> topic_sockets_;
+  struct TopicData {
+    std::mutex mutex;
+    std::thread thread;
+    std::shared_ptr<TopicCallbackData> callback;
+    NodeSocket socket;
+  };
 
-  // Each socket should only be used by one thread at a time
-  std::map<std::string, std::shared_ptr<std::mutex> > topic_mutex_;
+  struct RpcData {
+    std::mutex mutex;
+    std::shared_ptr<TimedNodeSocket> socket;
+    std::shared_ptr<RPC> rpc;
+  };
 
-  // Topic should have a thread if a callback is preferred for it.
-  std::map<std::string, std::thread> topic_thread_;
-  std::map<std::string, std::shared_ptr<TopicCallbackData> > topic_callback_;
-
-  // nodename to socket map
-  std::map<std::string, std::shared_ptr<TimedNodeSocket> > rpc_sockets_;
-
-  // Each socket should only be used by one thread at a time
-  std::map<std::string, std::shared_ptr<std::mutex> > rpc_mutex_;
-
-  // function to RPC structs map
-  std::map<std::string, RPC*> rpc_table_;
+  std::map<std::string, std::shared_ptr<TopicData> > topics_;
+  std::map<std::string, std::shared_ptr<RpcData> > rpc_;
 
   // for automatic server discovery
   ZeroConf zero_conf_;
