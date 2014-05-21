@@ -377,13 +377,13 @@ bool node::advertise(const std::string& sTopic) {
 
 bool node::publish(const std::string& sTopic,
                    const google::protobuf::Message& Msg) {
-    zmq::message_t ZmqMsg(Msg.ByteSize());
-    if (!Msg.SerializeToArray(ZmqMsg.data(), Msg.ByteSize())) {
+    zmq::message_t zmq_msg(Msg.ByteSize());
+    if (!Msg.SerializeToArray(zmq_msg.data(), Msg.ByteSize())) {
       LOG(WARNING) << "Conversion of protobuf message to ZMQ message for topic "
                    << sTopic <<  " was not successfull";
       return false;
     }
-    return publish(sTopic, ZmqMsg);
+    return publish(sTopic, zmq_msg);
 }
 
 bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
@@ -493,7 +493,26 @@ bool node::listen(const std::string& topic, uint16_t port) {
 }
 
 bool node::send(const std::string& listener, const std::string& msg) {
+  zmq::message_t zmq_msg(msg.size());
+  memcpy(zmq_msg.data(), msg.data(), msg.size());
+  return send(listener, &zmq_msg);
+}
+
+bool node::send(const std::string& listener,
+                const google::protobuf::Message& msg) {
+  int msg_size = msg.ByteSize();
+  zmq::message_t zmq_msg(msg_size);
+  if (!msg.SerializeToArray(zmq_msg.data(), msg_size)) {
+    LOG(debug_level_) << "Conversion of protobuf message to ZMQ message for "
+                      << listener <<  " was not successful.";
+    return false;
+  }
+  return send(listener, &zmq_msg);
+}
+
+bool node::send(const std::string& listener, zmq::message_t* zmq_msg) {
   CHECK(init_done_);
+  CHECK_NOTNULL(zmq_msg);
   std::string listening_resource = kListenScheme + listener;
   std::string dest_addr;
   {
@@ -536,11 +555,8 @@ bool node::send(const std::string& listener, const std::string& msg) {
   socket->setsockopt(ZMQ_SNDTIMEO,
                      &send_recv_max_wait_,
                      sizeof(send_recv_max_wait_));
-
-  zmq::message_t zmq_msg(msg.size());
-  memcpy(zmq_msg.data(), msg.data(), msg.size());
   try {
-    return socket->send(zmq_msg);
+    return socket->send(*zmq_msg);
   } catch(const zmq::error_t& error) {
     LOG(WARNING) << "Error sending a message for listener " << listener;
     return false;
@@ -549,10 +565,10 @@ bool node::send(const std::string& listener, const std::string& msg) {
 
 bool node::receive(const std::string& resource,
                    google::protobuf::Message& Msg) {
-    zmq::message_t ZmqMsg;
+    zmq::message_t zmq_msg;
 
-    return receive(resource, ZmqMsg) &&
-        Msg.ParseFromArray(ZmqMsg.data(), ZmqMsg.size());
+    return receive(resource, zmq_msg) &&
+        Msg.ParseFromArray(zmq_msg.data(), zmq_msg.size());
 }
 
 bool node::receive(const std::string& resource, std::string* msg) {
@@ -563,7 +579,7 @@ bool node::receive(const std::string& resource, std::string* msg) {
   return ret;
 }
 
-bool node::receive(const std::string& resource, zmq::message_t& ZmqMsg) {
+bool node::receive(const std::string& resource, zmq::message_t& zmq_msg) {
   CHECK(init_done_);
   std::string topic_resource = kTopicScheme + resource;
 
@@ -593,7 +609,7 @@ bool node::receive(const std::string& resource, zmq::message_t& ZmqMsg) {
   socket->setsockopt(
       ZMQ_RCVTIMEO, &send_recv_max_wait_, sizeof(send_recv_max_wait_));
   try {
-    return socket->recv(&ZmqMsg);
+    return socket->recv(&zmq_msg);
   } catch(const zmq::error_t& error) {
     LOG(WARNING) << "Error receiving zmq packet: " << error.what();
     return false;

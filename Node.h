@@ -206,6 +206,8 @@ class node {
   /// @param [in] listener: The "node/topic" that is listening
   /// @param [in] msg: The message to send
   bool send(const std::string& listener, const std::string& msg);
+  bool send(const std::string& listener, const google::protobuf::Message& msg);
+  bool send(const std::string& listener, zmq::message_t* msg);
 
   /// Consume data from publisher
   /// Input: Node resource: "NodeName/Topic"
