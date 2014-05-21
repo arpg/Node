@@ -16,3 +16,8 @@ def_test(NodeListenTest
   SOURCES NodeListenTest.cpp
   DEPENDS node
   )
+
+def_test(NodePubSubTest
+  SOURCES NodePubSubTest.cpp
+  DEPENDS node
+  )

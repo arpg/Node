@@ -161,8 +161,9 @@ class node {
       unsigned int                      time_out = 0//< Input: ms to wait for reply
                 );
 
-  /// Make a remote procedure call like "node->func()" -- with out node name resolution.
-  // this is the main API most calls boil down to.
+  /// Make a remote procedure call like "node->func()" -- with out
+  /// node name resolution.  this is the main API most calls boil down
+  /// to.
   bool call_rpc(NodeSocket socket,
                 std::mutex* socket_mutex,
                 const std::string& function,  //< Input: Remote function to call
