@@ -22,7 +22,9 @@ namespace node {
 ZeroConf::ZeroConf() : dns_service_ref_(0), stop_thread_(false) {}
 ZeroConf::~ZeroConf() {
   stop_thread_ = true;
-  listen_to_server_thread_.join();
+  if (listen_to_server_thread_.joinable()) {
+    listen_to_server_thread_.join();
+  }
 }
 
 inline void _BrowseReplyCallback(
