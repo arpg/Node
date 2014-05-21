@@ -46,7 +46,7 @@ struct TimedNodeSocket {
   double      last_heartbeat_time;
 };
 
-zmq::context_t* _InitSingleton() {
+zmq::context_t* node::InitSingleton() {
   // not ideal! we should apparently port away from avahi-compat... ug
   setenv("AVAHI_COMPAT_NOWARN", "1", 1);
   static zmq::context_t* pContext = new zmq::context_t(1);
@@ -89,7 +89,7 @@ void node::set_verbosity(int level) {
 bool node::init(std::string node_name) {
   node_name_ = node_name;
   host_ip_ = _GetHostIP();
-  context_ = _InitSingleton();
+  context_ = InitSingleton();
 
   // install signal handlers so we can exit and tell other nodes about it..
   signal(SIGHUP       , NodeSignalHandler);
@@ -693,12 +693,12 @@ void node::_GetResourceTableFunc(
 void node::GetResourceTableFunc(
     msg::GetTableRequest& req,
     msg::GetTableResponse& rep) {
-  msg::ResourceTable* pTable = rep.mutable_resource_table(); // add the resource table to the message
+  msg::ResourceTable* pTable = rep.mutable_resource_table();
   pTable->set_version(resource_table_version_);
   pTable->set_checksum(_ResourceTableCRC());
   rep.set_sender_name(node_name_);
   for (auto it = resource_table_.begin(); it != resource_table_.end(); ++it) {
-    msg::ResourceLocator* pMsg = pTable->add_urls();// add new url to end of table
+    msg::ResourceLocator* pMsg = pTable->add_urls();
     pMsg->set_resource(it->first);
     pMsg->set_address(it->second);
   }

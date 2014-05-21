@@ -37,16 +37,22 @@
 #include <sstream>
 #include <string>
 #include <thread>
-#include <miniglog/logging.h>
 
-#include <zmq.h>
 #include <google/protobuf/message.h>
-
+#include <miniglog/logging.h>
 #include <NodeConfig.h>
 #include <NodeMessages.pb.h>
-#include "zmq.hpp"
-#include "ZeroConf.h"
+#include <Node/zmq.hpp>
+#include <Node/ZeroConf.h>
 
+namespace node { class node; }
+
+// global list of all allocated nodes -- we will call _BroadcastExit on shutdown
+extern std::vector<node::node*> g_vNodes;
+
+namespace node {
+
+struct TimedNodeSocket;
 typedef std::shared_ptr<zmq::socket_t> NodeSocket;
 
 typedef void(*FuncPtr)(google::protobuf::Message&,
@@ -59,32 +65,6 @@ typedef std::function<void(google::protobuf::Message&,
 
 typedef
 std::function<void(std::shared_ptr<google::protobuf::Message>)> TopicCallback;
-
-struct RPC {
-  RPCFunction RpcFunc;
-  std::shared_ptr<google::protobuf::Message> ReqMsg;
-  std::shared_ptr<google::protobuf::Message> RepMsg;
-  void* UserData;
-};
-
-struct TopicCallbackData {
-  TopicCallback callback_;
-  std::shared_ptr<google::protobuf::Message> callback_msg_;
-};
-
-namespace node { class node; }
-
-// global list of all alocated nodes -- we will call _BroadcastExit on shutdown
-extern std::vector<node::node*> g_vNodes;
-
-namespace node {
-
-struct TimedNodeSocket;
-
-// The port to use by default if we can't autodiscover
-#define NODE_DEFAULT_PORT 1776U
-
-zmq::context_t* _InitSingleton();
 
 class node {
   static const std::string kTopicScheme, kRpcScheme, kListenScheme;
@@ -105,90 +85,62 @@ class node {
 
   /// Specialization to register a remote procedure call for the
   // "int f(string)" signature.
-  bool provide_rpc(const std::string& sName,   //< Input: Function name
-                   int (*pFunc)(const std::string&)  //< Input: Function pointer
-                   );
+  //< Input: Function name
+  //< Input: Function pointer
+  bool provide_rpc(const std::string& sName,
+                   int (*pFunc)(const std::string&));
 
   /// Register a remote procedure call.
+  //< Input: Function name
+  //< Input: Function pointer
+  //< Input: User data passed to the function
   template <class Req, class Rep>
-  bool provide_rpc(const std::string& sName, //< Input: Function name
-                   void (*pFunc)(Req&, Rep&, void*), //< Input: Function pointer
-                   void* pUserData //< Input: User data passed to the function
-                   ) {
-    std::lock_guard<std::mutex> lock(mutex_); // careful
-
-    assert(init_done_);
-    // check if function with that name is already registered
-    auto it = rpc_.find(sName);
-    if (it != rpc_.end()) return false;
-
-    auto data = std::make_shared<RpcData>();
-    auto rpc = std::make_shared<RPC>();
-    rpc->RpcFunc = (FuncPtr)pFunc;
-    rpc->ReqMsg.reset(new Req);
-    rpc->RepMsg.reset(new Rep);
-    rpc->UserData = pUserData;
-    data->rpc = rpc;
-    rpc_[sName] = data;
-
-    std::string rpc_resource = "rpc://" + node_name_ + "/" + sName;
-    resource_table_[rpc_resource] = _GetAddress();
-    return true;
-  }
+  bool provide_rpc(const std::string& sName,
+                   void (*pFunc)(Req&, Rep&, void*),
+                   void* pUserData);
 
   /// Make a remote procedure call like "node->func()".
-  // This is a specialization for the "int f(string)" signature
-  bool call_rpc(
-      const std::string& rpc_resource, //< Input: Remote node name and rpc method
-      const std::string& input,    //< Input: input to rpc method
-      int& result                  //< Output:
-                );
+  /// This is a specialization for the "int f(string)" signature
+  ///
+  /// @param rpc_resource Remote node name and rpc method
+  /// @param input to rpc method
+  /// @param int result
+  bool call_rpc(const std::string& rpc_resource,
+                const std::string& input,
+                int& result);
 
   /// Make a remote procedure call like "node->func()".
-  bool call_rpc(
-      const std::string&               rpc_resource,//< Input:  node/rpc
-      const google::protobuf::Message& msg_req,   //< Input: Protobuf message request
-      google::protobuf::Message&       msg_rep,  //< Output: Protobuf message reply
-      unsigned int                     time_out = 0//< Input: ms to wait for reply
-                );
+  //< Input:  node/rpc
+  //< Input: Protobuf message request
+  //< Output: Protobuf message reply
+  //< Input: ms to wait for reply
+  bool call_rpc(const std::string& rpc_resource,
+                const google::protobuf::Message& msg_req,
+                google::protobuf::Message& msg_rep,
+                unsigned int time_out = 0);
 
   /// Make a remote procedure call like "node->func()".
-  bool call_rpc(
-      const std::string&                node_name,      //< Input: Remote node name
-      const std::string&                function,  //< Input: Remote function to call
-      const google::protobuf::Message&  msg_req,     //< Input: Protobuf message request
-      google::protobuf::Message&        msg_rep,     //< Output: Protobuf message reply
-      unsigned int                      time_out = 0//< Input: ms to wait for reply
-                );
-
-  /// Make a remote procedure call like "node->func()" -- with out
-  /// node name resolution.  this is the main API most calls boil down
-  /// to.
-  bool call_rpc(NodeSocket socket,
-                std::mutex* socket_mutex,
-                const std::string& function,  //< Input: Remote function to call
-                const google::protobuf::Message& msg_req,     //< Input: Protobuf message request
-                google::protobuf::Message& msg_rep,     //< Output: Protobuf message reply
-                unsigned int nTimeoutMS = 0 //< Input: ms to wait for reply
-                );
+  //< Input: Remote node name
+  //< Input: Remote function to call
+  //< Input: Protobuf message request
+  //< Output: Protobuf message reply
+  //< Input: ms to wait for reply
+  bool call_rpc(const std::string& node_name,
+                const std::string& function,
+                const google::protobuf::Message& msg_req,
+                google::protobuf::Message& msg_rep,
+                unsigned int time_out = 0);
 
   ///  Tell all other nodes we publish this topic
   /// Input: Topic name
   bool advertise(const std::string& topic);
 
-  /// Send data
-  bool publish(const std::string& topic,     //< Input: Topic to write to
-               const google::protobuf::Message&  msg //< Input: Message to send
-               );
-
   /// Send data.
   /// Input: Topic to write to
   /// Input: Message to send
+  bool publish(const std::string& topic,
+               const google::protobuf::Message&  msg);
   bool publish(const std::string& topic, zmq::message_t& msg);
-
-  /// Send a string to a receiver
-  /// Input: Topic or listening node resource to write to
-  /// Input: Message to send
   bool publish(const std::string& topic, const std::string& msg);
 
   /// Subscribe to a topic being advertised by another node
@@ -198,9 +150,6 @@ class node {
   /// Listen for a given message topic on a random port
   /// @param [in] Node resource: "Topic"
   bool listen(const std::string& topic);
-
-  /// Listen for a given message topic on a random port
-  /// @param [in] Node resource: "Topic"
   bool listen(const std::string& topic, uint16_t port);
 
   /// Send a message to a specific listener
@@ -214,47 +163,58 @@ class node {
   /// Input: Node resource: "NodeName/Topic"
   /// Output: Message read
   bool receive(const std::string& resource, google::protobuf::Message& msg);
-
-  /// Consume data from publisher
-  /// Input: Node resource: "NodeName/Topic"
-  /// Output: Message read
   bool receive(const std::string& resource, std::string* msg);
-
-  /// Consume data form publisher
-  /// Input: Node resource: "NodeName/Topic"
-  /// Output: ZMQ Output message
   bool receive(const std::string& resource, zmq::message_t& zmq_msg);
 
   template<class Callbackmsg>
-  bool RegisterCallback(const std::string &resource, TopicCallback func) {
-    std::string topicResource = kTopicScheme + resource;
-
-    auto it = topics_.find(topicResource);
-    if (it == topics_.end()) {
-      LOG(WARNING) << "Topic '" << resource << "' hasn't been subscribed to.";
-      return false;
-    }
-
-    static_assert(
-          std::is_base_of<google::protobuf::Message, Callbackmsg>::value,
-          "Value provided for template is not a protobuf message.");
-    std::shared_ptr<google::protobuf::Message> msg =
-        std::make_shared<Callbackmsg>();
-    std::shared_ptr<TopicCallbackData> tcd =
-        std::make_shared<TopicCallbackData>();
-    tcd->callback_ = func;
-    tcd->callback_msg_ = msg;
-
-    it->second->thread = std::thread(
-        std::bind(&node::TopicThread, this, resource));
-    it->second->callback = tcd;
-
-    LOG(INFO) << "Registered callback for '" << topicResource << "'";
-    return true;
-  }
+  bool RegisterCallback(const std::string &resource, TopicCallback func);
 
   /// Figure out the network name of this machine
   std::string _GetHostIP(const std::string& sPreferredInterface = "eth");
+
+  // this function return the name of all connected client
+  std::vector<std::string> GetSubscribeClientName();
+
+  /// Connect to another node at a given hostname string and port
+  ///
+  /// The GetTableResponse will be filled out with the response from
+  /// the connected node. This includes the Node name to be used for
+  /// RPC nodes.
+  ///
+  /// Returns whether the connection was successful.
+  bool ConnectNode(const std::string& host, uint16_t port,
+                   msg::GetTableResponse* rep);
+
+  /// Disconnect from the desired node
+  void DisconnectNode(const std::string& node_name);
+
+  bool using_auto_discovery() const {
+    return use_auto_discovery_;
+  }
+
+  void set_using_auto_discovery(bool use_auto) {
+    use_auto_discovery_ = use_auto;
+  }
+
+  // Set the port for this Node to use. Can only be called BEFORE init().
+  void set_bind_port(uint16_t port) {
+    CHECK(!initialized_) << "Only call set_bind_port before init().";
+    port_ = port;
+    use_fixed_port_ = true;
+  }
+
+  // Get the port this node is listening on.
+  uint16_t bind_port() {
+    return port_;
+  }
+
+ protected:
+  zmq::context_t* InitSingleton();
+
+  void HeartbeatThread();
+  void RPCThread();
+  void TopicThread(const std::string& resource);
+
 
   /// Heartbeat, called by client _DoHeartbeat to check if he is up-to-date.
   static void _HeartbeatFunc(msg::HeartbeatRequest& req,
@@ -290,48 +250,19 @@ class node {
   void SetResourceTableFunc(msg::SetTableRequest& req,
                             msg::SetTableResponse& rep);
 
-  void HeartbeatThread();
-  void RPCThread();
-  void TopicThread(const std::string& resource);
-
-  // this function return the name of all connect client
-  std::vector<std::string> GetSubscribeClientName();
-
-  /// Connect to another node at a given hostname string and port
-  ///
-  /// The GetTableResponse will be filled out with the response from
-  /// the connected node. This includes the Node name to be used for
-  /// RPC nodes.
-  ///
-  /// Returns whether the connection was successful.
-  bool ConnectNode(const std::string& host, uint16_t port,
-                   msg::GetTableResponse* rep);
-
-  /// Disconnect from the desired node
-  void DisconnectNode(const std::string& node_name);
-
-  bool using_auto_discovery() const {
-    return use_auto_discovery_;
-  }
-
-  void set_using_auto_discovery(bool use_auto) {
-    use_auto_discovery_ = use_auto;
-  }
-
-  // Set the port for this Node to use. Can only be called BEFORE init().
-  void set_bind_port(uint16_t port) {
-    if (initialized_) {
-      std::cerr << "Only call set_bind_port before init()!" << std::endl;
-      abort();
-    }
-    port_ = port;
-    use_fixed_port_ = true;
-  }
-
-  // Get the port this node is listening on.
-  uint16_t bind_port() {
-    return port_;
-  }
+  /// Make a remote procedure call like "node->func()" -- with out
+  /// node name resolution.  this is the main API most calls boil down
+  /// to.
+  //< Input: Remote function to call
+  //< Input: Protobuf message request
+  //< Output: Protobuf message reply
+  //< Input: ms to wait for reply
+  bool call_rpc(NodeSocket socket,
+                std::mutex* socket_mutex,
+                const std::string& function,
+                const google::protobuf::Message& msg_req,
+                google::protobuf::Message& msg_rep,
+                unsigned int nTimeoutMS = 0);
 
  private:
   /// Build a protobuf containing all the resources we know of, and the CRC.
@@ -395,6 +326,18 @@ class node {
   // resource to host:port map
   std::map<std::string, std::string> resource_table_;
 
+  struct RPC {
+    RPCFunction RpcFunc;
+    std::shared_ptr<google::protobuf::Message> ReqMsg;
+    std::shared_ptr<google::protobuf::Message> RepMsg;
+    void* UserData;
+  };
+
+  struct TopicCallbackData {
+    TopicCallback callback_;
+    std::shared_ptr<google::protobuf::Message> callback_msg_;
+  };
+
   struct TopicData {
     std::mutex mutex;
     std::thread thread;
@@ -435,8 +378,8 @@ class node {
   // node's machine IP
   std::string host_ip_;
 
-  // node's RPC port
-  uint16_t port_ = NODE_DEFAULT_PORT;
+  // node's RPC port with a default.
+  uint16_t port_ = 1776;
 
   // node unique name
   std::string node_name_;
@@ -476,6 +419,57 @@ class node {
   bool exiting_ = false;
 };
 
-}  // end namespace node
+template <class Req, class Rep>
+bool node::provide_rpc(const std::string& sName,
+                       void (*pFunc)(Req&, Rep&, void*),
+                       void* pUserData) {
+  std::lock_guard<std::mutex> lock(mutex_); // careful
 
+  assert(init_done_);
+  // check if function with that name is already registered
+  auto it = rpc_.find(sName);
+  if (it != rpc_.end()) return false;
+
+  auto data = std::make_shared<RpcData>();
+  auto rpc = std::make_shared<RPC>();
+  rpc->RpcFunc = (FuncPtr)pFunc;
+  rpc->ReqMsg.reset(new Req);
+  rpc->RepMsg.reset(new Rep);
+  rpc->UserData = pUserData;
+  data->rpc = rpc;
+  rpc_[sName] = data;
+
+  std::string rpc_resource = "rpc://" + node_name_ + "/" + sName;
+  resource_table_[rpc_resource] = _GetAddress();
+  return true;
+}
+
+template<class Callbackmsg>
+bool node::RegisterCallback(const std::string &resource, TopicCallback func) {
+  std::string topicResource = kTopicScheme + resource;
+
+  auto it = topics_.find(topicResource);
+  if (it == topics_.end()) {
+    LOG(WARNING) << "Topic '" << resource << "' hasn't been subscribed to.";
+    return false;
+  }
+
+  static_assert(
+      std::is_base_of<google::protobuf::Message, Callbackmsg>::value,
+      "Value provided for template is not a protobuf message.");
+  std::shared_ptr<google::protobuf::Message> msg =
+      std::make_shared<Callbackmsg>();
+  std::shared_ptr<TopicCallbackData> tcd =
+      std::make_shared<TopicCallbackData>();
+  tcd->callback_ = func;
+  tcd->callback_msg_ = msg;
+
+  it->second->thread = std::thread(
+      std::bind(&node::TopicThread, this, resource));
+  it->second->callback = tcd;
+
+  LOG(INFO) << "Registered callback for '" << topicResource << "'";
+  return true;
+}
+}  // end namespace node
 #endif  // _NODE_NODE_H_
