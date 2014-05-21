@@ -1,4 +1,4 @@
-#include "Node.h"
+#include <node/Node.h>
 #include <arpa/inet.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -49,10 +49,7 @@ struct TimedNodeSocket {
 zmq::context_t* _InitSingleton() {
   // not ideal! we should apparently port away from avahi-compat... ug
   setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-  static zmq::context_t* pContext = NULL;
-  if (pContext == NULL) {
-    pContext = new zmq::context_t(1);
-  }
+  static zmq::context_t* pContext = new zmq::context_t(2);
   return pContext;
 }
 
@@ -64,9 +61,6 @@ node::node(bool use_auto_discovery) : context_(nullptr),
   get_resource_table_max_wait_ = 0.8;
   resource_table_version_ = 1;
   init_done_ = false;
-
-  // maximum wait time for publish and recv method, millionsecond
-  send_recv_max_wait_ = 1;
 }
 
 static void WaitThread(std::thread& t) {
@@ -139,7 +133,6 @@ bool node::init(std::string node_name) {
   // fail if we can't bind that port.
   if (use_fixed_port_ || !use_auto_discovery_) {
     if (!_BindPort(port_, socket_)) {
-      LOG(ERROR) << "Failed to bind to port " << port_;
       return false;
     }
   } else {
@@ -399,23 +392,27 @@ bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
 
   // check if socket is already open for this topic
   auto it = topics_.find(topic_resource);
-  if (it == topics_.end()) {
-    // no socket found
-    return false;
-  } else {
-    const NodeSocket& socket = it->second->socket;
+  if (it == topics_.end()) return false;
 
-    std::lock_guard<std::mutex> lock(it->second->mutex);
-    socket->setsockopt(ZMQ_SNDTIMEO,
-                       &send_recv_max_wait_,
-                       sizeof(send_recv_max_wait_));
-    try {
-      return socket->send(Msg);
-    } catch(const zmq::error_t& error) {
-      LOG(WARNING) << "Error sending the message for topic " << sTopic;
-      return false;
-    }
+  const NodeSocket& socket = it->second->socket;
+
+  std::lock_guard<std::mutex> lock(it->second->mutex);
+  socket->setsockopt(ZMQ_SNDTIMEO,
+                     &send_recv_max_wait_,
+                     sizeof(send_recv_max_wait_));
+  try {
+    return socket->send(Msg);
+  } catch(const zmq::error_t& error) {
+    LOG(WARNING) << "Error sending the message for topic " << sTopic;
+    return false;
   }
+}
+
+bool node::publish(const std::string& topic, const std::string& msg) {
+  // No null termination on the wire, get's added when read out.
+  zmq::message_t zmq_msg(msg.size());
+  memcpy(zmq_msg.data(), msg.data(), msg.size());
+  return publish(topic, zmq_msg);
 }
 
 bool node::subscribe(const std::string& resource) {
@@ -471,6 +468,7 @@ bool node::listen(const std::string& topic) {
   int port = _BindRandomPort(data->socket);
   resource_table_[endpoint] = _GetAddress(host_ip_, port);
   listen_data_[topic] = data;
+  _PropagateResourceTable();
 
   return true;
 }
@@ -490,7 +488,63 @@ bool node::listen(const std::string& topic, uint16_t port) {
     resource_table_[endpoint] = _GetAddress(host_ip_, port);
     listen_data_[topic] = data;
   }
+  _PropagateResourceTable();
   return success;
+}
+
+bool node::send(const std::string& listener, const std::string& msg) {
+  CHECK(init_done_);
+  std::string listening_resource = kListenScheme + listener;
+  std::string dest_addr;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto res_it = resource_table_.find(listening_resource);
+    if (res_it == resource_table_.end()) {
+      LOG(ERROR) << "Attempting to send to non-existent listener " << listener;
+      return false;
+    }
+    dest_addr = res_it->second;
+  }
+
+  auto it = send_data_.find(listening_resource);
+  std::shared_ptr<SendData> send;
+  if (it == send_data_.end()) {
+    NodeSocket socket(new zmq::socket_t(*context_, ZMQ_PUB));
+
+    std::string to_connect = "tcp://" + dest_addr;
+    auto data = std::make_shared<SendData>();
+    data->socket = socket;
+    try {
+      data->socket->connect(to_connect.c_str());
+    } catch(const zmq::error_t& err) {
+      LOG(ERROR) << "Failed to connect to listener @ " << to_connect;
+      return false;
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      send_data_[listening_resource] = data;
+    }
+    _PropagateResourceTable();
+    return true;
+  } else {
+    send = it->second;
+  }
+
+  std::lock_guard<std::mutex> lock(send->mutex);
+  const NodeSocket& socket = send->socket;
+  socket->setsockopt(ZMQ_SNDTIMEO,
+                     &send_recv_max_wait_,
+                     sizeof(send_recv_max_wait_));
+
+  zmq::message_t zmq_msg(msg.size());
+  memcpy(zmq_msg.data(), msg.data(), msg.size());
+  try {
+    return socket->send(zmq_msg);
+  } catch(const zmq::error_t& error) {
+    LOG(WARNING) << "Error sending a message for listener " << listener;
+    return false;
+  }
 }
 
 bool node::receive(const std::string& resource,
@@ -499,6 +553,14 @@ bool node::receive(const std::string& resource,
 
     return receive(resource, ZmqMsg) &&
         Msg.ParseFromArray(ZmqMsg.data(), ZmqMsg.size());
+}
+
+bool node::receive(const std::string& resource, std::string* msg) {
+  CHECK_NOTNULL(msg);
+  zmq::message_t zmq_msg;
+  bool ret = receive(resource, zmq_msg);
+  msg->assign(reinterpret_cast<const char*>(zmq_msg.data()), zmq_msg.size());
+  return ret;
 }
 
 bool node::receive(const std::string& resource, zmq::message_t& ZmqMsg) {
@@ -522,8 +584,8 @@ bool node::receive(const std::string& resource, zmq::message_t& ZmqMsg) {
     socket = listen_data->socket;
     lock = std::unique_lock<std::mutex>(listen_data->mutex);
   } else {
-    LOG(ERROR) << "Can't receive on topic '" << resource
-               << "'. Did you subscribe to it?";
+    LOG(debug_level_) << "Can't receive on topic '" << resource
+                      << "'. Did you subscribe to it?";
     // no socket found
     return false;
   }
@@ -533,7 +595,7 @@ bool node::receive(const std::string& resource, zmq::message_t& ZmqMsg) {
   try {
     return socket->recv(&ZmqMsg);
   } catch(const zmq::error_t& error) {
-    LOG(WARNING) << "Error receiving zmq packet: "<< error.what();
+    LOG(WARNING) << "Error receiving zmq packet: " << error.what();
     return false;
   }
   return true;
@@ -1105,13 +1167,14 @@ void node::_PrintRpcSockets() {
 }
 
 bool node::_BindPort(uint16_t port, const NodeSocket& socket) {
-
   try {
     std::ostringstream address;
     address << "tcp://*:" << port;
     socket->bind(address.str().c_str());
     return true;
   } catch(const zmq::error_t& error) {
+    LOG(debug_level_) << "Failed to bind to port " << port << ": "
+                      << error.what();
     return false;
   }
 }

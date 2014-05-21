@@ -5,7 +5,12 @@ if(NOT TARGET gtest)
   add_subdirectory(gtest)
 endif()
 
-include_directories(gtest/include)
+find_package(Node QUIET)
+
+include_directories(
+  gtest/include
+  ${Node_INCLUDE_DIRS}
+  )
 
 def_test(NodeListenTest
   SOURCES NodeListenTest.cpp

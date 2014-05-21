@@ -185,6 +185,11 @@ class node {
   /// Input: Message to send
   bool publish(const std::string& topic, zmq::message_t& msg);
 
+  /// Send a string to a receiver
+  /// Input: Topic or listening node resource to write to
+  /// Input: Message to send
+  bool publish(const std::string& topic, const std::string& msg);
+
   /// Subscribe to a topic being advertised by another node
   /// @param [in] Node resource: "NodeName/Topic"
   bool subscribe(const std::string& resource);
@@ -197,10 +202,20 @@ class node {
   /// @param [in] Node resource: "Topic"
   bool listen(const std::string& topic, uint16_t port);
 
+  /// Send a message to a specific listener
+  /// @param [in] listener: The "node/topic" that is listening
+  /// @param [in] msg: The message to send
+  bool send(const std::string& listener, const std::string& msg);
+
   /// Consume data from publisher
   /// Input: Node resource: "NodeName/Topic"
   /// Output: Message read
   bool receive(const std::string& resource, google::protobuf::Message& msg);
+
+  /// Consume data from publisher
+  /// Input: Node resource: "NodeName/Topic"
+  /// Output: Message read
+  bool receive(const std::string& resource, std::string* msg);
 
   /// Consume data form publisher
   /// Input: Node resource: "NodeName/Topic"
@@ -396,9 +411,16 @@ class node {
     NodeSocket socket;
   };
 
+  struct SendData {
+    //std::shared_ptr<TopicCallbackData> callback;
+    std::mutex mutex;
+    NodeSocket socket;
+  };
+
   std::map<std::string, std::shared_ptr<TopicData> > topics_;
   std::map<std::string, std::shared_ptr<RpcData> > rpc_;
   std::map<std::string, std::shared_ptr<ListenData> > listen_data_;
+  std::map<std::string, std::shared_ptr<SendData> > send_data_;
 
   // for automatic server discovery
   ZeroConf zero_conf_;
