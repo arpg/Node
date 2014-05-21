@@ -614,7 +614,6 @@ bool node::receive(const std::string& resource, zmq::message_t& zmq_msg) {
     LOG(WARNING) << "Error receiving zmq packet: " << error.what();
     return false;
   }
-  return true;
 }
 
 std::string node::_GetHostIP(const std::string& sPreferredInterface) {
