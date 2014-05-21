@@ -49,7 +49,7 @@ struct TimedNodeSocket {
 zmq::context_t* _InitSingleton() {
   // not ideal! we should apparently port away from avahi-compat... ug
   setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-  static zmq::context_t* pContext = new zmq::context_t(2);
+  static zmq::context_t* pContext = new zmq::context_t(1);
   return pContext;
 }
 
