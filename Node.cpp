@@ -69,13 +69,20 @@ node::node(bool use_auto_discovery) : context_(nullptr),
   send_recv_max_wait_ = 1;
 }
 
+static void WaitThread(std::thread& t) {
+  if (t.joinable()) {
+    t.join();
+  }
+}
+
 node::~node() {
   _BroadcastExit();
   exiting_ = true;
-  rpc_thread_.join();
-  heartbeat_thread_.join();
+
+  WaitThread(rpc_thread_);
+  WaitThread(heartbeat_thread_);
   for (auto it = topics_.begin(); it != topics_.end(); ++it) {
-    it->second->thread.join();
+    WaitThread(it->second->thread);
   }
 }
 
@@ -1238,8 +1245,11 @@ void node::_BroadcastExit() {
   }
   for (const auto& pair : tmp) {
     const std::shared_ptr<RpcData>& rpc_data = pair.second;
-    if (!rpc_data->socket->socket->connected() ||
-        rpc_data->socket->socket == socket_) continue;
+    if (!rpc_data->socket ||
+        !rpc_data->socket->socket->connected() ||
+        rpc_data->socket->socket == socket_) {
+      continue;
+    }
     LOG(debug_level_) << "[Node '" << node_name_
                       << "']  Calling DeleteFromResource to remove "
                       << req.urls_to_delete_size()
