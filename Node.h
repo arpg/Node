@@ -409,13 +409,11 @@ class node {
   };
 
   struct ListenData {
-    //std::shared_ptr<TopicCallbackData> callback;
     std::mutex mutex;
     NodeSocket socket;
   };
 
   struct SendData {
-    //std::shared_ptr<TopicCallbackData> callback;
     std::mutex mutex;
     NodeSocket socket;
   };
