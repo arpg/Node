@@ -21,3 +21,8 @@ def_test(NodePubSubTest
   SOURCES NodePubSubTest.cpp
   DEPENDS node
   )
+
+def_test(NodeRpcTest
+  SOURCES NodeRpcTest.cpp
+  DEPENDS node
+  )

@@ -99,6 +99,10 @@ class node {
                    void (*pFunc)(Req&, Rep&, void*),
                    void* pUserData);
 
+  template <class Req, class Rep>
+  bool provide_rpc(const std::string& function_name,
+                   const RPCFunction& func);
+
   /// Make a remote procedure call like "node->func()".
   /// This is a specialization for the "int f(string)" signature
   ///
@@ -423,9 +427,9 @@ template <class Req, class Rep>
 bool node::provide_rpc(const std::string& sName,
                        void (*pFunc)(Req&, Rep&, void*),
                        void* pUserData) {
-  std::lock_guard<std::mutex> lock(mutex_); // careful
+  std::lock_guard<std::mutex> lock(mutex_);
+  CHECK(init_done_);
 
-  assert(init_done_);
   // check if function with that name is already registered
   auto it = rpc_.find(sName);
   if (it != rpc_.end()) return false;
@@ -443,6 +447,26 @@ bool node::provide_rpc(const std::string& sName,
   resource_table_[rpc_resource] = _GetAddress();
   return true;
 }
+
+template <class Req, class Rep>
+bool node::provide_rpc(const std::string& function_name,
+                       const RPCFunction& func) {
+  auto it = rpc_.find(function_name);
+  if (it != rpc_.end()) return false;
+
+  auto data = std::make_shared<RpcData>();
+  auto rpc = std::make_shared<RPC>();
+  rpc->RpcFunc = func;
+  rpc->ReqMsg.reset(new Req);
+  rpc->RepMsg.reset(new Rep);
+  data->rpc = rpc;
+  rpc_[function_name] = data;
+
+  std::string rpc_resource = "rpc://" + node_name_ + "/" + function_name;
+  resource_table_[rpc_resource] = _GetAddress();
+  return true;
+}
+
 
 template<class Callbackmsg>
 bool node::RegisterCallback(const std::string &resource, TopicCallback func) {
