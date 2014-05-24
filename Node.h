@@ -213,8 +213,6 @@ class node {
   }
 
  protected:
-  zmq::context_t* InitSingleton();
-
   void HeartbeatThread();
   void RPCThread();
   void TopicThread(const std::string& resource);
@@ -326,6 +324,9 @@ class node {
   void BuildDeleteFromTableRequest(msg::DeleteFromTableRequest* msg) const;
 
  private:
+  // ZMQ context. Must be initialized first and destroyed last.
+  std::unique_ptr<zmq::context_t> context_;
+
   // NB a "resource" is a nodename, node/rpc or node/topic URL
   // resource to host:port map
   std::map<std::string, std::string> resource_table_;
@@ -376,9 +377,6 @@ class node {
   // global socket, (RPC too)
   NodeSocket socket_;
 
-  // global context
-  zmq::context_t* context_;
-
   // node's machine IP
   std::string host_ip_;
 
@@ -424,28 +422,13 @@ class node {
 };
 
 template <class Req, class Rep>
-bool node::provide_rpc(const std::string& sName,
+bool node::provide_rpc(const std::string& function_name,
                        void (*pFunc)(Req&, Rep&, void*),
                        void* pUserData) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  CHECK(init_done_);
-
-  // check if function with that name is already registered
-  auto it = rpc_.find(sName);
-  if (it != rpc_.end()) return false;
-
-  auto data = std::make_shared<RpcData>();
-  auto rpc = std::make_shared<RPC>();
-  rpc->RpcFunc = (FuncPtr)pFunc;
-  rpc->ReqMsg.reset(new Req);
-  rpc->RepMsg.reset(new Rep);
-  rpc->UserData = pUserData;
-  data->rpc = rpc;
-  rpc_[sName] = data;
-
-  std::string rpc_resource = "rpc://" + node_name_ + "/" + sName;
-  resource_table_[rpc_resource] = _GetAddress();
-  return true;
+  return provide_rpc<Req, Rep>(function_name,
+                               std::bind((FuncPtr)pFunc,
+                                         std::placeholders::_1,
+                                         std::placeholders::_2, pUserData));
 }
 
 template <class Req, class Rep>

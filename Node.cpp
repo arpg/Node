@@ -46,12 +46,6 @@ struct TimedNodeSocket {
   double      last_heartbeat_time;
 };
 
-zmq::context_t* node::InitSingleton() {
-  // not ideal! we should apparently port away from avahi-compat... ug
-  setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-  static zmq::context_t* pContext = new zmq::context_t(1);
-  return pContext;
-}
 
 node::node(bool use_auto_discovery) : context_(nullptr),
                                       use_auto_discovery_(use_auto_discovery) {
@@ -89,7 +83,9 @@ void node::set_verbosity(int level) {
 bool node::init(std::string node_name) {
   node_name_ = node_name;
   host_ip_ = _GetHostIP();
-  context_ = InitSingleton();
+
+  setenv("AVAHI_COMPAT_NOWARN", "1", 1);
+  context_.reset(new zmq::context_t(2));
 
   // install signal handlers so we can exit and tell other nodes about it..
   signal(SIGHUP       , NodeSignalHandler);
@@ -1281,15 +1277,15 @@ void node::_ConnectRpcSocket(const std::string& node_name,
 }
 
 void node::NodeSignalHandler(int nSig) {
-  for (size_t ii = 0; ii < g_vNodes.size(); ++ii) {
-    g_vNodes[ii]->_BroadcastExit();
-  }
   switch(nSig) {
     case SIGINT : LOG(ERROR) << "Caught SIGINT"; break;
     case SIGTERM: LOG(ERROR) << "Caught SIGTERM"; break;
     case SIGSTOP: LOG(ERROR) << "Caught SIGSTOP"; break;
     case SIGSEGV: LOG(ERROR) << "Caught SIGSEGV"; break;
     default:      LOG(ERROR) << "NodeSignalHandler caught "<< strsignal(nSig);
+  }
+  for (size_t ii = 0; ii < g_vNodes.size(); ++ii) {
+    g_vNodes[ii]->_BroadcastExit();
   }
   exit(-1);
 }
