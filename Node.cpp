@@ -23,6 +23,8 @@ const std::string node::kListenScheme = "listen://";
 const std::string node::kTopicScheme = "topic://";
 const std::string node::kRpcScheme = "rpc://";
 
+static const int kSocketLingerTime = 0;
+
 /// used to time socket communications
 struct TimedNodeSocket {
   TimedNodeSocket() {}
@@ -232,6 +234,8 @@ bool node::call_rpc(const std::string& node_name,
 
     // lets connect using the socket
     try {
+      data->socket->socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
+                                       sizeof(kSocketLingerTime));
       data->socket->socket->connect(("tcp://" + host_and_port).c_str());
     } catch(const zmq::error_t& error) {
       LOG(ERROR) << "Error connecting to " << host_and_port;
@@ -437,6 +441,8 @@ bool node::subscribe(const std::string& resource) {
   NodeSocket socket(new zmq::socket_t(*context_, ZMQ_SUB));
   // lets connect using the socket
   try {
+    socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
+                       sizeof(kSocketLingerTime));
     socket->setsockopt(ZMQ_SUBSCRIBE, NULL, 0);
     socket->connect(resource_ip.c_str());
   } catch(const zmq::error_t& error) {
@@ -530,6 +536,8 @@ bool node::send(const std::string& listener, zmq::message_t* zmq_msg) {
     auto data = std::make_shared<SendData>();
     data->socket = socket;
     try {
+      data->socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
+                               sizeof(kSocketLingerTime));
       data->socket->connect(to_connect.c_str());
     } catch(const zmq::error_t& err) {
       LOG(ERROR) << "Failed to connect to listener @ " << to_connect;
@@ -1082,6 +1090,8 @@ bool node::ConnectNode(const std::string& host, uint16_t port,
   std::string zmq_addr = _ZmqAddress(host, port);
   NodeSocket socket(new zmq::socket_t(*context_, ZMQ_REQ));
   try {
+    socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
+                       sizeof(kSocketLingerTime));
     socket->connect(zmq_addr.c_str());
   } catch(const zmq::error_t& error) {
     LOG(ERROR) << "zmq->connect() -- " << error.what();
@@ -1262,6 +1272,8 @@ void node::_ConnectRpcSocket(const std::string& node_name,
     std::string sZmqAddr = "tcp://" + node_addr;
     NodeSocket socket = NodeSocket(new zmq::socket_t(*context_, ZMQ_REQ));
     try {
+      socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
+                         sizeof(kSocketLingerTime));
       socket->connect(sZmqAddr.c_str());
     } catch(const zmq::error_t& error) {
       std::string sErr = error.what();
