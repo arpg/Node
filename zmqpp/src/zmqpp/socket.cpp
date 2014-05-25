@@ -24,7 +24,6 @@ const int socket::send_label;
 #endif
 
 const int max_socket_option_buffer_size = 256;
-const int max_stream_buffer_size = 4096;
 
 socket::socket(const context& context, socket_type const& type)
 	: _socket(nullptr)
