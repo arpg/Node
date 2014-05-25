@@ -52,7 +52,7 @@ public:
 	 * \param socket the socket to monitor.
 	 * \param event the event flags to monitor on the socket.
 	 */
-	void add(socket_t& socket, short const& event = poll_in);
+	void add(socket_t& socket, short const event = poll_in);
 
 	/*!
 	 * Add a file descriptor to the polling model and set which events to monitor.
@@ -60,15 +60,24 @@ public:
 	 * \param descriptor the file descriptor to monitor.
 	 * \param event the event flags to monitor.
 	 */
-	void add(int const& descriptor, short const& event = poll_in | poll_error);
+	void add(int const descriptor, short const event = poll_in | poll_error);
 
 	/*!
-	 * Check if we are monitoring a given socket with this poller.
+	 * Add a zmq_pollitem_t to the poller; Events to monitor are already configured.
+	 * If the zmq_pollitem_t has a null socket pointer it is added to the fdindex,
+	 * otherwise it is added to the socket index.
 	 *
-	 * \param socket the socket to check.
-	 * \return true if it is there.
+	 * \param item the pollitem to be added
 	 */
-	bool has(socket_t const& socket);
+	void add(zmq_pollitem_t item);
+
+	 /*!
+	  * Check if we are monitoring a given socket with this poller.
+	  *
+	  * \param socket the socket to check.
+	  * \return true if it is there.
+	  */
+	 bool has(socket_t const& socket);
 
 	/*!
 	 * Check if we are monitoring a given file descriptor with this poller.
@@ -76,7 +85,17 @@ public:
 	 * \param descriptor the file descriptor to check.
 	 * \return true if it is there.
 	 */
-	bool has(int const& descriptor);
+	bool has(int const descriptor);
+
+	/*!
+	 * Check if we are monitoring a given pollitem.
+	 * We assume the pollitem is a socket if it's socket is a non null pointer; otherwise,
+	 * it is considered as a file descriptor.
+	 *
+	 * \param item the pollitem to check for
+	 * \return true if it is there.
+	 */
+	bool has(const zmq_pollitem_t &item);
 
 	/*!
 	 * Stop monitoring a socket.
@@ -84,13 +103,20 @@ public:
 	 * \param socket the socket to stop monitoring.
 	 */
 	void remove(socket_t const& socket);
-
+	
 	/*!
 	 * Stop monitoring a file descriptor.
 	 *
 	 * \param descriptor the file descriptor to stop monitoring.
 	 */
-	void remove(int const& descriptor);
+	void remove(int const descriptor);
+
+	/*!
+	 * Stop monitoring a zmq_pollitem_t
+	 *
+	 * \param item the pollitem to stop monitoring.
+	 */
+	void remove(const zmq_pollitem_t &item);
 
 	/*!
 	 * Update the monitored event flags for a given socket.
@@ -98,16 +124,24 @@ public:
 	 * \param socket the socket to update event flags.
 	 * \param event the event flags to monitor on the socket.
 	 */
-	void check_for(socket_t const& socket, short const& event);
-
+	void check_for(socket_t const& socket, short const event);
+	
 	/*!
 	 * Update the monitored event flags for a given file descriptor.
 	 *
 	 * \param descriptor the file descriptor to update event flags.
 	 * \param event the event flags to monitor on the socket.
 	 */
-	void check_for(int const& descriptor, short const& event);
-
+	void check_for(int const descriptor, short const event);
+	
+	/*!
+	 * Update the monitored event flags for a given zmq_pollitem_t
+	 *
+	 * \param item the item to change event flags for.
+	 * \param event the event flags to monitor on the socket.
+	 */
+	void check_for(const zmq_pollitem_t &item, short const event);
+	
 	/*!
 	 * Poll for monitored events.
 	 *
@@ -120,7 +154,7 @@ public:
 	 * \return true if there is an event..
 	 */
 	bool poll(long timeout = wait_forever);
-
+	
 	/*!
 	 * Get the event flags triggered for a socket.
 	 *
@@ -128,14 +162,22 @@ public:
 	 * \return the event flags.
 	 */
 	short events(socket_t const& socket) const;
-
+	
 	/*!
 	 * Get the event flags triggered for a file descriptor.
 	 *
 	 * \param descriptor the file descriptor to get triggered event flags for.
 	 * \return the event flags.
 	 */
-	short events(int const& descriptor) const;
+	short events(int const descriptor) const;
+	
+	/*!
+	 * Get the event flags triggered for a zmq_pollitem_t
+	 *
+	 * \param item the pollitem to get triggered event flags for.
+	 * \return the event flags.
+	 */
+	short events(const zmq_pollitem_t &item) const;
 
 	/*!
 	 * Check either a file descriptor or socket for input events.
