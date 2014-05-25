@@ -75,9 +75,12 @@ if(ANDROID)
   list(APPEND PROJ_INCLUDE_DIRS android-ifaddrs)
 endif()
 
+add_subdirectory(zmqpp)
+
 def_library(${LIBRARY_NAME}
   SOURCES ${NODE_HDRS} ${NODE_SRCS}
   LINK_LIBS ${PROJ_LIBRARIES} miniglog
+  DEPENDS zmqpp
   PACKAGE Node
   )
 
