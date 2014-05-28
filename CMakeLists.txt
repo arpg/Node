@@ -42,6 +42,7 @@ set(PROJ_INCLUDE_DIRS
   ${Node_BINARY_DIR}
   ${Node_SOURCE_DIR}
   ${MINIGLOG_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
   )
 
 set(PROJ_LIBRARIES
@@ -54,8 +55,6 @@ if(DNSSD_FOUND)
   list(APPEND PROJ_INCLUDE_DIRS ${DNSSD_INCLUDE_DIRS})
   list(APPEND PROJ_LIBRARIES ${DNSSD_LIBRARIES})
 endif()
-
-include_directories(${PROJ_INCLUDE_DIRS})
 
 if(ANDROID)
     # Override to use hosts protoc compiler
@@ -76,14 +75,8 @@ if(ANDROID)
 endif()
 
 add_subdirectory(zmqpp)
-include_directories(zmqpp/src)
+include_directories(${PROJ_INCLUDE_DIRS})
 
-def_library(${LIBRARY_NAME}
-  SOURCES ${NODE_HDRS} ${NODE_SRCS}
-  LINK_LIBS ${PROJ_LIBRARIES} miniglog
-  DEPENDS zmqpp
-  PACKAGE Node
-  )
 
 # Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
@@ -91,7 +84,14 @@ set(EXPORT_NODE_INC
   ${CMAKE_CURRENT_BINARY_DIR}
   ${PROTOBUF_INCLUDE_DIRS}
   ${ZeroMQ_INCLUDE_DIRS}
-  zmqpp/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
+  )
+
+def_library(${LIBRARY_NAME}
+  SOURCES ${NODE_HDRS} ${NODE_SRCS}
+  LINK_LIBS ${PROJ_LIBRARIES} miniglog
+  DEPENDS zmqpp
+  PACKAGE Node
   )
 
 export_package(Node
