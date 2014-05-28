@@ -76,6 +76,7 @@ if(ANDROID)
 endif()
 
 add_subdirectory(zmqpp)
+include_directories(zmqpp/src)
 
 def_library(${LIBRARY_NAME}
   SOURCES ${NODE_HDRS} ${NODE_SRCS}
@@ -90,6 +91,7 @@ set(EXPORT_NODE_INC
   ${CMAKE_CURRENT_BINARY_DIR}
   ${PROTOBUF_INCLUDE_DIRS}
   ${ZeroMQ_INCLUDE_DIRS}
+  zmqpp/src
   )
 
 export_package(Node

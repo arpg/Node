@@ -16,16 +16,24 @@ add_definitions(-MMD -std=c++0x -pipe
   )
 
 set(SRCS
+  src/zmqpp/actor.cpp
+  src/zmqpp/actor.hpp
   src/zmqpp/compatibility.hpp
   src/zmqpp/context.cpp
   src/zmqpp/context.hpp
   src/zmqpp/context_options.hpp
   src/zmqpp/exception.hpp
+  src/zmqpp/frame.cpp
+  src/zmqpp/frame.hpp
   src/zmqpp/inet.hpp
   src/zmqpp/message.cpp
   src/zmqpp/message.hpp
   src/zmqpp/poller.cpp
   src/zmqpp/poller.hpp
+  src/zmqpp/reactor.cpp
+  src/zmqpp/reactor.hpp
+  src/zmqpp/signal.cpp
+  src/zmqpp/signal.hpp
   src/zmqpp/socket.cpp
   src/zmqpp/socket.hpp
   src/zmqpp/socket_options.hpp

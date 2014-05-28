@@ -25,6 +25,25 @@ const std::string node::kRpcScheme = "rpc://";
 
 static const int kSocketLingerTime = 0;
 
+static void buffer_deleter(void* buf) {
+  delete[] (char*)buf;
+}
+
+inline bool add_proto(const google::protobuf::Message& proto,
+                      zmqpp::message* out) {
+  int proto_size = proto.ByteSize();
+  char* buffer = new char[proto_size];
+  bool success = proto.SerializeToArray(buffer, proto_size);
+  if (!success) {
+    LOG(ERROR) << "Failed to serialize protocol buffer";
+    // error serializing protobuf to ZMQ message
+    delete buffer;
+  } else {
+    out->move(buffer, proto_size, &buffer_deleter);
+  }
+  return success;
+}
+
 /// used to time socket communications
 struct TimedNodeSocket {
   TimedNodeSocket() {}
@@ -87,7 +106,8 @@ bool node::init(std::string node_name) {
   host_ip_ = _GetHostIP();
 
   setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-  context_.reset(new zmq::context_t(2));
+  context_.reset(new zmqpp::context());
+  context_->set(zmqpp::context_option::io_threads, 3);
 
   // install signal handlers so we can exit and tell other nodes about it..
   signal(SIGHUP       , NodeSignalHandler);
@@ -125,7 +145,7 @@ bool node::init(std::string node_name) {
   LOG(debug_level_) << "Finished registering signals";
 
   // RPC server socket
-  socket_.reset(new zmq::socket_t(*context_, ZMQ_REP));
+  socket_.reset(new zmqpp::socket(*context_, zmqpp::socket_type::rep));
 
   // If we're not using ZeroConf then we should bind a known port and
   // fail if we can't bind that port.
@@ -230,21 +250,17 @@ bool node::call_rpc(const std::string& node_name,
     socket = data->socket;
   } else {
     data->socket = std::make_shared<TimedNodeSocket>(
-        NodeSocket(new zmq::socket_t(*context_, ZMQ_REQ)));
+        NodeSocket(new zmqpp::socket(*context_, zmqpp::socket_type::req)));
 
     // lets connect using the socket
     try {
-      data->socket->socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
-                                       sizeof(kSocketLingerTime));
+      data->socket->socket->set(zmqpp::socket_option::linger,
+                                kSocketLingerTime);
       data->socket->socket->connect(("tcp://" + host_and_port).c_str());
     } catch(const zmq::error_t& error) {
       LOG(ERROR) << "Error connecting to " << host_and_port;
       return false;
     }
-  }
-
-  if (!data->socket->socket->connected()) {
-    return false;
   }
 
   // once we have socket, we can let the resource table change. yay
@@ -264,38 +280,25 @@ bool node::call_rpc(NodeSocket socket,
                     const std::string& function_name,
                     const google::protobuf::Message& msg_req,
                     google::protobuf::Message& msg_rep,
-                    unsigned int nTimeoutMS) {
+                    int timeout_ms) {
   CHECK(init_done_);
-  CHECK(socket->connected());
-
-  // prepare to append function information (clip function name size)
-  std::string sFName = function_name;
-  if (sFName.size() > 254) {
-    sFName.resize(254);
-  }
-  unsigned char n = sFName.size();
 
   // prepare message
-  zmq::message_t ZmqReq(sizeof(n) + n + msg_req.ByteSize());
-  std::memcpy(ZmqReq.data(), &n, sizeof(n));
-  std::memcpy((char*)ZmqReq.data() + sizeof(n), sFName.c_str(), n);
-  if (!msg_req.SerializeToArray((char*)ZmqReq.data() + sizeof(n) + n,
-                                msg_req.ByteSize())) {
-    // error serializing protobuf to ZMQ message
+  zmqpp::message req;
+  req << function_name;
+
+  if (!add_proto(msg_req, &req)) {
     return false;
   }
-
-  // send request
 
   // We can only use this socket one thread at a time
   /** @todo Sockets should only be used by 1 thread ever... */
   std::lock_guard<std::mutex> lock(*socket_mutex);
-  socket->setsockopt(ZMQ_SNDTIMEO,
-                     &send_recv_max_wait_,
-                     sizeof(send_recv_max_wait_));
+  socket->set(zmqpp::socket_option::send_timeout,
+              send_recv_max_wait_);
 
   try {
-    if (!socket->send(ZmqReq)) {
+    if (!socket->send(req)) {
       LOG(ERROR) << "zmq::send return: " << strerror(errno);
       return false;
     }
@@ -305,24 +308,22 @@ bool node::call_rpc(NodeSocket socket,
     return false;
   }
 
-  zmq::message_t ZmqRep;
+  zmqpp::message rep;
   double dStartTime = _TicMS();
-
-  socket->setsockopt(ZMQ_RCVTIMEO, &nTimeoutMS, sizeof(nTimeoutMS));
+  socket->set(zmqpp::socket_option::receive_timeout, timeout_ms);
 
   try{
     bool bStatus = false;
     while(!bStatus) {
-      if (nTimeoutMS == 0) { // block
-        bStatus = socket->recv(&ZmqRep);
-      }
-      else{
-        bStatus = socket->recv(&ZmqRep);
+      if (timeout_ms == 0) { // block
+        bStatus = socket->receive(rep);
+      } else {
+        bStatus = socket->receive(rep);
         double dTimeTaken = _TocMS(dStartTime);
-        if (dTimeTaken >= nTimeoutMS) {
+        if (dTimeTaken >= timeout_ms) {
           // timeout... error receiving
           LOG(debug_level_) << "Warning: Call timed out waiting for reply ("
-                            << dTimeTaken << " ms > " << nTimeoutMS << " ms).";
+                            << dTimeTaken << " ms > " << timeout_ms << " ms).";
           return false;
         }
         usleep(100); // wait a bit
@@ -330,11 +331,11 @@ bool node::call_rpc(NodeSocket socket,
     }
   } catch(const zmq::error_t& error) {
     std::string sErr = error.what();
-    LOG(ERROR) << " zmq->recv() -- " << sErr;
+    LOG(ERROR) << " zmq->receive() -- " << sErr;
     return false;
   }
 
-  if (!msg_rep.ParseFromArray(ZmqRep.data(), ZmqRep.size())) {
+  if (!msg_rep.ParseFromArray(rep.raw_data(0), rep.size(0))) {
     // bad protobuf format
     return false;
   }
@@ -357,7 +358,7 @@ bool node::advertise(const std::string& sTopic) {
 
   // no socket open.. lets open a new one
   // check if port is already in use
-  NodeSocket socket(new zmq::socket_t(*context_, ZMQ_PUB));
+  NodeSocket socket(new zmqpp::socket(*context_, zmqpp::socket_type::pub));
   int port = _BindRandomPort(socket);
   std::string sAddr = _GetAddress(host_ip_, port);
   LOG(debug_level_) << "Publishing topic '" << sTopic << "' on " << sAddr;
@@ -376,17 +377,12 @@ bool node::advertise(const std::string& sTopic) {
 }
 
 bool node::publish(const std::string& sTopic,
-                   const google::protobuf::Message& Msg) {
-    zmq::message_t zmq_msg(Msg.ByteSize());
-    if (!Msg.SerializeToArray(zmq_msg.data(), Msg.ByteSize())) {
-      LOG(WARNING) << "Conversion of protobuf message to ZMQ message for topic "
-                   << sTopic <<  " was not successfull";
-      return false;
-    }
-    return publish(sTopic, zmq_msg);
+                   const google::protobuf::Message& msg) {
+  zmqpp::message zmq_msg;
+  return add_proto(msg, &zmq_msg) && publish(sTopic, zmq_msg);
 }
 
-bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
+bool node::publish(const std::string& sTopic, zmqpp::message& Msg) {
   CHECK(init_done_);
   std::string topic_resource = kTopicScheme + node_name_ + "/" + sTopic;
 
@@ -397,9 +393,7 @@ bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
   const NodeSocket& socket = it->second->socket;
 
   std::lock_guard<std::mutex> lock(it->second->mutex);
-  socket->setsockopt(ZMQ_SNDTIMEO,
-                     &send_recv_max_wait_,
-                     sizeof(send_recv_max_wait_));
+  socket->set(zmqpp::socket_option::send_timeout, send_recv_max_wait_);
   try {
     return socket->send(Msg);
   } catch(const zmq::error_t& error) {
@@ -410,8 +404,8 @@ bool node::publish(const std::string& sTopic, zmq::message_t& Msg) {
 
 bool node::publish(const std::string& topic, const std::string& msg) {
   // No null termination on the wire, get's added when read out.
-  zmq::message_t zmq_msg(msg.size());
-  memcpy(zmq_msg.data(), msg.data(), msg.size());
+  zmqpp::message zmq_msg;
+  zmq_msg << msg;
   return publish(topic, zmq_msg);
 }
 
@@ -438,12 +432,11 @@ bool node::subscribe(const std::string& resource) {
     resource_ip = "tcp://" + its->second;
   }
 
-  NodeSocket socket(new zmq::socket_t(*context_, ZMQ_SUB));
+  NodeSocket socket(new zmqpp::socket(*context_, zmqpp::socket_type::sub));
   // lets connect using the socket
   try {
-    socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
-                       sizeof(kSocketLingerTime));
-    socket->setsockopt(ZMQ_SUBSCRIBE, NULL, 0);
+    socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
+    socket->set(zmqpp::socket_option::subscribe, NULL, 0);
     socket->connect(resource_ip.c_str());
   } catch(const zmq::error_t& error) {
     return false;
@@ -465,8 +458,8 @@ bool node::listen(const std::string& topic) {
   }
 
   auto data = std::make_shared<ListenData>();
-  data->socket.reset(new zmq::socket_t(*context_, ZMQ_SUB));
-  data->socket->setsockopt(ZMQ_SUBSCRIBE, NULL, 0);
+  data->socket.reset(new zmqpp::socket(*context_, zmqpp::socket_type::sub));
+  data->socket->set(zmqpp::socket_option::subscribe, NULL, 0);
   int port = _BindRandomPort(data->socket);
   resource_table_[endpoint] = _GetAddress(host_ip_, port);
   listen_data_[topic] = data;
@@ -483,8 +476,8 @@ bool node::listen(const std::string& topic, uint16_t port) {
   }
 
   auto data = std::make_shared<ListenData>();
-  data->socket.reset(new zmq::socket_t(*context_, ZMQ_SUB));
-  data->socket->setsockopt(ZMQ_SUBSCRIBE, NULL, 0);
+  data->socket.reset(new zmqpp::socket(*context_, zmqpp::socket_type::sub));
+  data->socket->set(zmqpp::socket_option::subscribe, NULL, 0);
   bool success = _BindPort(port, data->socket);
   if (success) {
     resource_table_[endpoint] = _GetAddress(host_ip_, port);
@@ -495,24 +488,18 @@ bool node::listen(const std::string& topic, uint16_t port) {
 }
 
 bool node::send(const std::string& listener, const std::string& msg) {
-  zmq::message_t zmq_msg(msg.size());
-  memcpy(zmq_msg.data(), msg.data(), msg.size());
+  zmqpp::message zmq_msg;
+  zmq_msg << msg;
   return send(listener, &zmq_msg);
 }
 
 bool node::send(const std::string& listener,
                 const google::protobuf::Message& msg) {
-  int msg_size = msg.ByteSize();
-  zmq::message_t zmq_msg(msg_size);
-  if (!msg.SerializeToArray(zmq_msg.data(), msg_size)) {
-    LOG(debug_level_) << "Conversion of protobuf message to ZMQ message for "
-                      << listener <<  " was not successful.";
-    return false;
-  }
-  return send(listener, &zmq_msg);
+  zmqpp::message zmq_msg;
+  return add_proto(msg, &zmq_msg) && send(listener, &zmq_msg);
 }
 
-bool node::send(const std::string& listener, zmq::message_t* zmq_msg) {
+bool node::send(const std::string& listener, zmqpp::message* zmq_msg) {
   CHECK(init_done_);
   CHECK_NOTNULL(zmq_msg);
   std::string listening_resource = kListenScheme + listener;
@@ -530,14 +517,13 @@ bool node::send(const std::string& listener, zmq::message_t* zmq_msg) {
   auto it = send_data_.find(listening_resource);
   std::shared_ptr<SendData> send;
   if (it == send_data_.end()) {
-    NodeSocket socket(new zmq::socket_t(*context_, ZMQ_PUB));
+    NodeSocket socket(new zmqpp::socket(*context_, zmqpp::socket_type::pub));
 
     std::string to_connect = "tcp://" + dest_addr;
     auto data = std::make_shared<SendData>();
     data->socket = socket;
     try {
-      data->socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
-                               sizeof(kSocketLingerTime));
+      data->socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
       data->socket->connect(to_connect.c_str());
     } catch(const zmq::error_t& err) {
       LOG(ERROR) << "Failed to connect to listener @ " << to_connect;
@@ -556,9 +542,7 @@ bool node::send(const std::string& listener, zmq::message_t* zmq_msg) {
 
   std::lock_guard<std::mutex> lock(send->mutex);
   const NodeSocket& socket = send->socket;
-  socket->setsockopt(ZMQ_SNDTIMEO,
-                     &send_recv_max_wait_,
-                     sizeof(send_recv_max_wait_));
+  socket->set(zmqpp::socket_option::send_timeout, send_recv_max_wait_);
   try {
     return socket->send(*zmq_msg);
   } catch(const zmq::error_t& error) {
@@ -568,22 +552,26 @@ bool node::send(const std::string& listener, zmq::message_t* zmq_msg) {
 }
 
 bool node::receive(const std::string& resource,
-                   google::protobuf::Message& Msg) {
-    zmq::message_t zmq_msg;
-
+                   google::protobuf::Message& msg) {
+    zmqpp::message zmq_msg;
     return receive(resource, zmq_msg) &&
-        Msg.ParseFromArray(zmq_msg.data(), zmq_msg.size());
+        msg.ParseFromArray(zmq_msg.raw_data(0), zmq_msg.size(0));
 }
 
 bool node::receive(const std::string& resource, std::string* msg) {
   CHECK_NOTNULL(msg);
-  zmq::message_t zmq_msg;
+  zmqpp::message zmq_msg;
   bool ret = receive(resource, zmq_msg);
-  msg->assign(reinterpret_cast<const char*>(zmq_msg.data()), zmq_msg.size());
+  if (ret) {
+    msg->assign(reinterpret_cast<const char*>(zmq_msg.raw_data(0)),
+                zmq_msg.size(0));
+  } else {
+    msg->clear();
+  }
   return ret;
 }
 
-bool node::receive(const std::string& resource, zmq::message_t& zmq_msg) {
+bool node::receive(const std::string& resource, zmqpp::message& zmq_msg) {
   CHECK(init_done_);
   std::string topic_resource = kTopicScheme + resource;
 
@@ -610,12 +598,11 @@ bool node::receive(const std::string& resource, zmq::message_t& zmq_msg) {
     return false;
   }
 
-  socket->setsockopt(
-      ZMQ_RCVTIMEO, &send_recv_max_wait_, sizeof(send_recv_max_wait_));
+  socket->set(zmqpp::socket_option::receive_timeout, send_recv_max_wait_);
   try {
-    return socket->recv(&zmq_msg);
-  } catch(const zmq::error_t& error) {
-    LOG(WARNING) << "Error receiving zmq packet: " << error.what();
+    return socket->receive(zmq_msg);
+  } catch(...) {
+    LOG(WARNING) << "Error receiving zmq packet";
     return false;
   }
 }
@@ -885,34 +872,34 @@ void node::RPCThread() {
 
   while(1) {
     // wait for request
-    zmq::message_t ZmqReq;
+    zmqpp::message req;
 
     try {
-      static const int rpc_recv_max_wait_ = 3000;
-      socket_->setsockopt(ZMQ_RCVTIMEO, &rpc_recv_max_wait_,
-                          sizeof(rpc_recv_max_wait_));
-      while (!socket_->recv(&ZmqReq)) {
+      static const int rpc_receive_max_wait_ = 3000;
+      socket_->set(zmqpp::socket_option::receive_timeout,
+                   rpc_receive_max_wait_);
+      while (!socket_->receive(req)) {
         if (exiting_) return;
       }
     } catch(const zmq::error_t& error) {
       std::string sErr = error.what();
-      LOG(ERROR) << "zmq->recv() -- " << sErr;
+      LOG(ERROR) << "zmq->receive() -- " << sErr;
+    }
+
+    if (req.parts() != 2) {
+      LOG(debug_level_) << "Received message with only " << req.parts()
+                        << " parts, instead of required 2.";
+      continue;
     }
 
     // obtain "header" which contains function name
-    unsigned char FuncNameSize;
-    memcpy(&FuncNameSize, ZmqReq.data(), sizeof(FuncNameSize));
-    std::string FuncName(
-        static_cast<char*>(ZmqReq.data()) + sizeof(FuncNameSize), FuncNameSize);
+    std::string func_name;
+    req >> func_name;
 
-    LOG(debug_level_) << "Responding to '" << FuncName << "' RPC call";
-
-    // prepare reply message
-    unsigned int PbOffset = sizeof(FuncNameSize) + FuncNameSize;
-    unsigned int PbByteSize = ZmqReq.size() - PbOffset;
+    LOG(debug_level_) << "Responding to '" << func_name << "' RPC call";
 
     // look-up function
-    auto rpc_it = rpc_.find(FuncName);
+    auto rpc_it = rpc_.find(func_name);
     if (rpc_it != rpc_.end() && rpc_it->second->rpc) {
       auto rpc = rpc_it->second->rpc;
       RPCFunction& Func = rpc->RpcFunc;
@@ -921,7 +908,12 @@ void node::RPCThread() {
 
       Rep->Clear();
 
-      if (!Req->ParseFromArray((char*)(ZmqReq.data()) + PbOffset, PbByteSize)) {
+      if (!Req->ParseFromArray(req.raw_data(1), req.size(1))) {
+        LOG(debug_level_) << "Failed to parse RPC request";
+        // send empty reply
+        zmqpp::message rep;
+        rep << "";
+        socket_->send(rep);
         continue;
       }
 
@@ -929,15 +921,16 @@ void node::RPCThread() {
       Func(*(Req), *(Rep), rpc->UserData);
 
       // send reply
-      zmq::message_t ZmqRep(Rep->ByteSize());
-      if (!Rep->SerializeToArray(ZmqRep.data(), Rep->ByteSize())) {
-        // error serializing protobuf to ZMQ message
+      zmqpp::message rep;
+      if (!add_proto(*Rep, &rep)) {
+        rep << "";
       }
-      socket_->send(ZmqRep);
+      socket_->send(rep);
     } else {
       // send empty reply
-      zmq::message_t ZmqRep(0);
-      socket_->send(ZmqRep);
+      zmqpp::message rep;
+      rep << "";
+      socket_->send(rep);
     }
   }
 }
@@ -1088,10 +1081,9 @@ bool node::ConnectNode(const std::string& host, uint16_t port,
   LOG(debug_level_) << "Connecting to " << host << ":" << port;
 
   std::string zmq_addr = _ZmqAddress(host, port);
-  NodeSocket socket(new zmq::socket_t(*context_, ZMQ_REQ));
+  NodeSocket socket(new zmqpp::socket(*context_, zmqpp::socket_type::req));
   try {
-    socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
-                       sizeof(kSocketLingerTime));
+    socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
     socket->connect(zmq_addr.c_str());
   } catch(const zmq::error_t& error) {
     LOG(ERROR) << "zmq->connect() -- " << error.what();
@@ -1270,10 +1262,9 @@ void node::_ConnectRpcSocket(const std::string& node_name,
   auto rpcit = rpc_.find(node_name);
   if (rpcit == rpc_.end()) {
     std::string sZmqAddr = "tcp://" + node_addr;
-    NodeSocket socket = NodeSocket(new zmq::socket_t(*context_, ZMQ_REQ));
+    NodeSocket socket = NodeSocket(new zmqpp::socket(*context_, zmqpp::socket_type::req));
     try {
-      socket->setsockopt(ZMQ_LINGER, &kSocketLingerTime,
-                         sizeof(kSocketLingerTime));
+      socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
       socket->connect(sZmqAddr.c_str());
     } catch(const zmq::error_t& error) {
       std::string sErr = error.what();
@@ -1331,9 +1322,7 @@ void node::_BroadcastExit() {
   }
   for (const auto& pair : tmp) {
     const std::shared_ptr<RpcData>& rpc_data = pair.second;
-    if (!rpc_data->socket ||
-        !rpc_data->socket->socket->connected() ||
-        rpc_data->socket->socket == socket_) {
+    if (!rpc_data->socket || rpc_data->socket->socket == socket_) {
       continue;
     }
     LOG(debug_level_) << "[Node '" << node_name_
