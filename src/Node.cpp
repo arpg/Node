@@ -1,4 +1,4 @@
-#include <node/Node.h>
+#include <Node/Node.h>
 #include <arpa/inet.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -12,8 +12,8 @@
 #include <sys/types.h>
 
 #include <boost/crc.hpp>  // for boost::crc_32_
-#include <node/TicToc.h>
-#include <node/ZeroConf.h>
+#include <Node/TicToc.h>
+#include <Node/ZeroConf.h>
 
 std::vector<node::node*> g_vNodes;
 
