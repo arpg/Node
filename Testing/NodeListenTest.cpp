@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <node/Node.h>
+#include <Node/Node.h>
 
 TEST(Node, Listen) {
   node::node n1(false);
