@@ -34,11 +34,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/NodeConfig.h.in
 
 set(PROJ_INCLUDE_DIRS
   ${CMAKE_BINARY_DIR}
-  ${CMAKE_SOURCE_DIR}/..
   ${ZeroMQ_INCLUDE_DIRS}
   ${Avahi_INCLUDE_DIRS}
   ${PROTOBUF_INCLUDE_DIRS}
-  ${Node_SOURCE_DIR}/..
   ${Node_BINARY_DIR}
   ${Node_SOURCE_DIR}
   ${Node_SOURCE_DIR}/include
