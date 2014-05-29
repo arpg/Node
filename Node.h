@@ -42,7 +42,6 @@
 #include <miniglog/logging.h>
 #include <NodeConfig.h>
 #include <NodeMessages.pb.h>
-#include <Node/zmq.hpp>
 #include <Node/ZeroConf.h>
 #include <zmqpp/zmqpp.hpp>
 

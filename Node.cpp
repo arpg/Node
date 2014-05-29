@@ -12,8 +12,8 @@
 #include <sys/types.h>
 
 #include <boost/crc.hpp>  // for boost::crc_32_
-#include "TicToc.h"
-#include "ZeroConf.h"
+#include <node/TicToc.h>
+#include <node/ZeroConf.h>
 
 std::vector<node::node*> g_vNodes;
 
@@ -257,7 +257,7 @@ bool node::call_rpc(const std::string& node_name,
       data->socket->socket->set(zmqpp::socket_option::linger,
                                 kSocketLingerTime);
       data->socket->socket->connect(("tcp://" + host_and_port).c_str());
-    } catch(const zmq::error_t& error) {
+    } catch(const zmqpp::exception& error) {
       LOG(ERROR) << "Error connecting to " << host_and_port;
       return false;
     }
@@ -299,10 +299,10 @@ bool node::call_rpc(NodeSocket socket,
 
   try {
     if (!socket->send(req)) {
-      LOG(ERROR) << "zmq::send return: " << strerror(errno);
+      LOG(ERROR) << "zmqpp::send return: " << strerror(errno);
       return false;
     }
-  } catch(const zmq::error_t& error) {
+  } catch(const zmqpp::exception& error) {
     std::string sErr = error.what();
     LOG(ERROR) << " zmq->send() -- " << sErr;
     return false;
@@ -329,7 +329,7 @@ bool node::call_rpc(NodeSocket socket,
         usleep(100); // wait a bit
       }
     }
-  } catch(const zmq::error_t& error) {
+  } catch(const zmqpp::exception& error) {
     std::string sErr = error.what();
     LOG(ERROR) << " zmq->receive() -- " << sErr;
     return false;
@@ -396,7 +396,7 @@ bool node::publish(const std::string& sTopic, zmqpp::message& Msg) {
   socket->set(zmqpp::socket_option::send_timeout, send_recv_max_wait_);
   try {
     return socket->send(Msg);
-  } catch(const zmq::error_t& error) {
+  } catch(const zmqpp::exception& error) {
     LOG(WARNING) << "Error sending the message for topic " << sTopic;
     return false;
   }
@@ -438,7 +438,7 @@ bool node::subscribe(const std::string& resource) {
     socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
     socket->set(zmqpp::socket_option::subscribe, NULL, 0);
     socket->connect(resource_ip.c_str());
-  } catch(const zmq::error_t& error) {
+  } catch(const zmqpp::exception& error) {
     return false;
   }
 
@@ -514,30 +514,30 @@ bool node::send(const std::string& listener, zmqpp::message* zmq_msg) {
     dest_addr = res_it->second;
   }
 
-  auto it = send_data_.find(listening_resource);
   std::shared_ptr<SendData> send;
-  if (it == send_data_.end()) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = send_data_.find(listening_resource);
+    if (it != send_data_.end()) {
+      send = it->second;
+    }
+  }
+  if (!send) {
     NodeSocket socket(new zmqpp::socket(*context_, zmqpp::socket_type::pub));
 
     std::string to_connect = "tcp://" + dest_addr;
-    auto data = std::make_shared<SendData>();
-    data->socket = socket;
+    send = std::make_shared<SendData>();
+    send->socket = socket;
     try {
-      data->socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
-      data->socket->connect(to_connect.c_str());
-    } catch(const zmq::error_t& err) {
+      send->socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
+      send->socket->connect(to_connect.c_str());
+    } catch(const zmqpp::exception& err) {
       LOG(ERROR) << "Failed to connect to listener @ " << to_connect;
       return false;
     }
 
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      send_data_[listening_resource] = data;
-    }
-    _PropagateResourceTable();
-    return true;
-  } else {
-    send = it->second;
+    std::lock_guard<std::mutex> lock(mutex_);
+    send_data_[listening_resource] = send;
   }
 
   std::lock_guard<std::mutex> lock(send->mutex);
@@ -545,7 +545,7 @@ bool node::send(const std::string& listener, zmqpp::message* zmq_msg) {
   socket->set(zmqpp::socket_option::send_timeout, send_recv_max_wait_);
   try {
     return socket->send(*zmq_msg);
-  } catch(const zmq::error_t& error) {
+  } catch(const zmqpp::exception& error) {
     LOG(WARNING) << "Error sending a message for listener " << listener;
     return false;
   }
@@ -881,7 +881,7 @@ void node::RPCThread() {
       while (!socket_->receive(req)) {
         if (exiting_) return;
       }
-    } catch(const zmq::error_t& error) {
+    } catch(const zmqpp::exception& error) {
       std::string sErr = error.what();
       LOG(ERROR) << "zmq->receive() -- " << sErr;
     }
@@ -1085,7 +1085,7 @@ bool node::ConnectNode(const std::string& host, uint16_t port,
   try {
     socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
     socket->connect(zmq_addr.c_str());
-  } catch(const zmq::error_t& error) {
+  } catch(const zmqpp::exception& error) {
     LOG(ERROR) << "zmq->connect() -- " << error.what();
   }
   LOG(debug_level_) << "'" << node_name_ << "' connected to remote node: "
@@ -1185,7 +1185,7 @@ bool node::_BindPort(uint16_t port, const NodeSocket& socket) {
     address << "tcp://*:" << port;
     socket->bind(address.str().c_str());
     return true;
-  } catch(const zmq::error_t& error) {
+  } catch(const zmqpp::exception& error) {
     LOG(debug_level_) << "Failed to bind to port " << port << ": "
                       << error.what();
     return false;
@@ -1266,7 +1266,7 @@ void node::_ConnectRpcSocket(const std::string& node_name,
     try {
       socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
       socket->connect(sZmqAddr.c_str());
-    } catch(const zmq::error_t& error) {
+    } catch(const zmqpp::exception& error) {
       std::string sErr = error.what();
       LOG(ERROR) << "Error zmq->connect() -- " << sErr;
     }
