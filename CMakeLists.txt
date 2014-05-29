@@ -63,7 +63,7 @@ endif()
 
 PROTOBUF_GENERATE_CPP(PROTO_HDRS PROTO_SRCS NodeMessages.proto)
 
-set(NODE_HDRS include/node/Node.h include/node/ZeroConf.h ${PROTO_HDRS})
+set(NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h ${PROTO_HDRS})
 set(NODE_SRCS src/Node.cpp src/ZeroConf.cpp ${PROTO_SRCS})
 
 if(ANDROID)
