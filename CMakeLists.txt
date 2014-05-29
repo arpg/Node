@@ -41,6 +41,7 @@ set(PROJ_INCLUDE_DIRS
   ${Node_SOURCE_DIR}/..
   ${Node_BINARY_DIR}
   ${Node_SOURCE_DIR}
+  ${Node_SOURCE_DIR}/include
   ${MINIGLOG_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
   )
@@ -64,8 +65,8 @@ endif()
 
 PROTOBUF_GENERATE_CPP(PROTO_HDRS PROTO_SRCS NodeMessages.proto)
 
-set(NODE_HDRS Node.h ZeroConf.h ${PROTO_HDRS})
-set(NODE_SRCS Node.cpp ZeroConf.cpp ${PROTO_SRCS})
+set(NODE_HDRS include/node/Node.h include/node/ZeroConf.h ${PROTO_HDRS})
+set(NODE_SRCS src/Node.cpp src/ZeroConf.cpp ${PROTO_SRCS})
 
 if(ANDROID)
   list(APPEND NODE_HDRS android-ifaddrs/ifaddrs.h)
@@ -77,10 +78,10 @@ endif()
 add_subdirectory(zmqpp)
 include_directories(${PROJ_INCLUDE_DIRS})
 
-
 # Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
-  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${Node_SOURCE_DIR}/include
   ${CMAKE_CURRENT_BINARY_DIR}
   ${PROTOBUF_INCLUDE_DIRS}
   ${ZeroMQ_INCLUDE_DIRS}
