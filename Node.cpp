@@ -303,8 +303,7 @@ bool node::call_rpc(NodeSocket socket,
       return false;
     }
   } catch(const zmqpp::exception& error) {
-    std::string sErr = error.what();
-    LOG(ERROR) << " zmq->send() -- " << sErr;
+    LOG(ERROR) << " zmq->send() -- " << error.what();
     return false;
   }
 
@@ -330,8 +329,7 @@ bool node::call_rpc(NodeSocket socket,
       }
     }
   } catch(const zmqpp::exception& error) {
-    std::string sErr = error.what();
-    LOG(ERROR) << " zmq->receive() -- " << sErr;
+    LOG(ERROR) << " zmq->receive() -- " << error.what();
     return false;
   }
 
@@ -882,8 +880,7 @@ void node::RPCThread() {
         if (exiting_) return;
       }
     } catch(const zmqpp::exception& error) {
-      std::string sErr = error.what();
-      LOG(ERROR) << "zmq->receive() -- " << sErr;
+      LOG(ERROR) << "zmq->receive() -- " << error.what();
     }
 
     if (req.parts() != 2) {
@@ -1267,8 +1264,8 @@ void node::_ConnectRpcSocket(const std::string& node_name,
       socket->set(zmqpp::socket_option::linger, kSocketLingerTime);
       socket->connect(sZmqAddr.c_str());
     } catch(const zmqpp::exception& error) {
-      std::string sErr = error.what();
-      LOG(ERROR) << "Error zmq->connect() -- " << sErr;
+      LOG(ERROR) << "Error zmq->connect() -- " << error.what();
+      return;
     }
     LOG(debug_level_) << "Connected to remote node: " << sZmqAddr;
 
