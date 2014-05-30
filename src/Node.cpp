@@ -44,6 +44,18 @@ inline bool add_proto(const google::protobuf::Message& proto,
   return success;
 }
 
+template <typename T>
+inline void erase_prefixed(const std::string& prefix,
+                           std::map<std::string, T>* to_modify) {
+  for (auto it = to_modify->begin(); it != to_modify->end(); ) {
+    if (it->first.find(prefix) != std::string::npos) {
+      to_modify->erase(it++);
+    } else {
+      ++it;
+    }
+  }
+}
+
 /// used to time socket communications
 struct TimedNodeSocket {
   TimedNodeSocket() {}
@@ -709,30 +721,14 @@ void node::DeleteFromResourceTableFunc(msg::DeleteFromTableRequest& req,
   LOG(debug_level_) << "DeleteFromResourceTableFunc() called by '"
                     << req.requesting_node_name() << "' to delete "
                     << req.urls_to_delete_size() << " resources";
-  // _PrintResourceLocatorTable();
-  for (int ii = 0; ii < req.urls_to_delete_size(); ++ii) {
-    const msg::ResourceLocator& m = req.urls_to_delete(ii);
-    auto it = resource_table_.find(m.resource());
-    if (it != resource_table_.end()) {
-      resource_table_.erase(it);
-    }
+
+  for (const msg::ResourceLocator& to_delete : req.urls_to_delete()) {
+    resource_table_.erase(to_delete.resource());
   }
 
-  // also remove from RPC socket map.
-  auto rpcit = rpc_.find(req.requesting_node_name());
-  if (rpcit != rpc_.end()) {
-    // this is ok, because no one else can touch this stuff right now...
-    rpc_.erase(rpcit);
-  }
-
-  // also remove from topics_,
-  for (auto topicit = topics_.begin(); topicit != topics_.end(); ) {
-    if (topicit->first.find(req.requesting_node_name()) != std::string::npos) {
-      topics_.erase(topicit++);
-    } else {
-      ++topicit;
-    }
-  }
+  rpc_.erase(req.requesting_node_name());
+  erase_prefixed(req.requesting_node_name(), &topics_);
+  erase_prefixed(req.requesting_node_name(), &listen_data_);
 
   // ok at this point we have updated our node table
   _PrintResourceLocatorTable();
@@ -1129,20 +1125,16 @@ void node::DisconnectNode(const std::string& node_name) {
 
   std::string topic_res = kTopicScheme + node_name;
   std::string rpc_res = kRpcScheme + node_name;
+  std::string listen_res = kListenScheme + node_name;
 
   std::shared_ptr<TimedNodeSocket> socket;
   std::mutex* socket_mutex;
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    for (auto it = resource_table_.begin(); it != resource_table_.end(); ) {
-      if (it->first.find(topic_res) != std::string::npos ||
-          it->first.find(rpc_res) != std::string::npos) {
-        resource_table_.erase(it++);
-      } else {
-        ++it;
-      }
-    }
+    erase_prefixed(topic_res, &resource_table_);
+    erase_prefixed(rpc_res, &resource_table_);
+    erase_prefixed(listen_res, &resource_table_);
 
     auto it = rpc_.find(node_name);
     if (it == rpc_.end()) return;
@@ -1292,12 +1284,17 @@ void node::NodeSignalHandler(int nSig) {
 
 /// collect all resources we provide
 void node::BuildDeleteFromTableRequest(msg::DeleteFromTableRequest* msg) const {
+  std::string rpc_prefix = kRpcScheme + node_name_;
+  std::string topic_prefix = kTopicScheme + node_name_;
+  std::string listen_prefix = kListenScheme + node_name_;
+
   std::lock_guard<std::mutex> lock(mutex_);
   msg->set_requesting_node_name(node_name_);
   msg->set_requesting_node_addr(_GetAddress());
   for (const std::pair<std::string, std::string> res : resource_table_) {
-    if (res.first.find(kRpcScheme + node_name_) != std::string::npos ||
-        res.first.find(kTopicScheme + node_name_) != std::string::npos) {
+    if (res.first.find(rpc_prefix) != std::string::npos ||
+        res.first.find(topic_prefix) != std::string::npos ||
+        res.first.find(listen_prefix) != std::string::npos) {
       msg::ResourceLocator* pMsg = msg->add_urls_to_delete();
       pMsg->set_resource(res.first);
       pMsg->set_address(res.second);
