@@ -32,14 +32,14 @@ class MatNodeExample{
   }
 
   void StartConnections(int num_sims){
-    for(int i = 0; i<num_sims; i++){
+    for (int i = 0; i < num_sims; i++) {
       std::string sim_name = "Sim"+std::to_string(i);
       /// The above allows us to connect to multiple Nodes, as long as
       /// they start with "Sim"
       node_.advertise(node_ad_+std::to_string(i));
-      std::cout << node_name_ << "/" << node_ad_+std::to_string(i)
+      std::cout << node_name_ << "/" << node_ad_ + std::to_string(i)
                 << " successfully advertised." << std::endl;
-      while(!node_.subscribe(sim_name+"/SendMsg")){
+      while (!node_.subscribe(sim_name+"/SendMsg")) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
@@ -54,10 +54,10 @@ class MatNodeExample{
     double* status = new double[1];
     status[0] = 0;
     pb::BVP_check sim_needs_bvp;
-    if(node_.receive("Sim"+std::to_string(sim_number)+"/SendMsg",
-                     sim_needs_bvp)){
+    if (node_.receive("Sim"+std::to_string(sim_number)+"/SendMsg",
+                     sim_needs_bvp)) {
       bool give = sim_needs_bvp.need();
-      if(give==true){
+      if (give == true) {
         status[0] = 1;
       }
     }
@@ -70,9 +70,9 @@ class MatNodeExample{
   /// your class functions shouldn't have to do that, too.
   ////////////////////////
 
-  double* Vector2Double(std::vector<double> vect){
+  double* Vector2Double(const std::vector<double>& vect){
     double* new_doub = new double[vect.size()];
-    for (int ii=0; ii<vect.size(); ii++) {
+    for (int ii = 0; ii < vect.size(); ii++) {
       new_doub[ii] = vect.at(ii);
     }
     return new_doub;
@@ -82,7 +82,7 @@ class MatNodeExample{
 
   std::vector<double> Double2Vector(double* doub, int size){
     std::vector<double> new_vect;
-    for(int ii=0; ii<size; ii++){
+    for (int ii = 0; ii < size; ii++) {
       new_vect.push_back(doub[ii]);
     }
     return new_vect;
@@ -98,4 +98,4 @@ class MatNodeExample{
 
 };
 
-#endif // __MATNODEEXAMPLE_H
+#endif // _MATNODEEXAMPLE_H
