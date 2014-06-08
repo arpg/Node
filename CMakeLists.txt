@@ -1,5 +1,6 @@
 project(Node)
 cmake_minimum_required(VERSION 2.8)
+enable_testing()
 
 # Add to module path, so we can find our cmake modules
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
@@ -33,14 +34,14 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/NodeConfig.h.in
 
 set(PROJ_INCLUDE_DIRS
   ${CMAKE_BINARY_DIR}
-  ${CMAKE_SOURCE_DIR}/..
   ${ZeroMQ_INCLUDE_DIRS}
   ${Avahi_INCLUDE_DIRS}
   ${PROTOBUF_INCLUDE_DIRS}
-  ${Node_SOURCE_DIR}/..
   ${Node_BINARY_DIR}
   ${Node_SOURCE_DIR}
+  ${Node_SOURCE_DIR}/include
   ${MINIGLOG_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
   )
 
 set(PROJ_LIBRARIES
@@ -54,8 +55,6 @@ if(DNSSD_FOUND)
   list(APPEND PROJ_LIBRARIES ${DNSSD_LIBRARIES})
 endif()
 
-include_directories(${PROJ_INCLUDE_DIRS})
-
 if(ANDROID)
     # Override to use hosts protoc compiler
     unset(PROTOBUF_PROTOC_EXECUTABLE CACHE)
@@ -64,8 +63,8 @@ endif()
 
 PROTOBUF_GENERATE_CPP(PROTO_HDRS PROTO_SRCS NodeMessages.proto)
 
-set(NODE_HDRS Node.h ZeroConf.h ${PROTO_HDRS})
-set(NODE_SRCS Node.cpp ZeroConf.cpp ${PROTO_SRCS})
+set(NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h ${PROTO_HDRS})
+set(NODE_SRCS src/Node.cpp src/ZeroConf.cpp ${PROTO_SRCS})
 
 if(ANDROID)
   list(APPEND NODE_HDRS android-ifaddrs/ifaddrs.h)
@@ -74,18 +73,24 @@ if(ANDROID)
   list(APPEND PROJ_INCLUDE_DIRS android-ifaddrs)
 endif()
 
-def_library(${LIBRARY_NAME}
-  SOURCES ${NODE_HDRS} ${NODE_SRCS}
-  LINK_LIBS ${PROJ_LIBRARIES} miniglog
-  PACKAGE Node
-  )
+add_subdirectory(zmqpp)
+include_directories(${PROJ_INCLUDE_DIRS})
 
 # Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
-  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${Node_SOURCE_DIR}/include
   ${CMAKE_CURRENT_BINARY_DIR}
   ${PROTOBUF_INCLUDE_DIRS}
   ${ZeroMQ_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
+  )
+
+def_library(${LIBRARY_NAME}
+  SOURCES ${NODE_HDRS} ${NODE_SRCS}
+  LINK_LIBS ${PROJ_LIBRARIES} miniglog
+  DEPENDS zmqpp
+  PACKAGE Node
   )
 
 export_package(Node
@@ -102,4 +107,5 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h"
 # For the examples to find this and only this version of Node
 set(Node_DIR ${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(Examples)
+add_subdirectory(Testing)
 
