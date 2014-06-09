@@ -187,6 +187,7 @@ bool node::init(std::string node_name) {
                     &_DeleteFromResourceTableFunc, this);
 
   rpc_thread_ = std::thread(std::bind(&node::RPCThread, this));
+
   // Sleep briefly to split log messages
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
   heartbeat_thread_ = std::thread(std::bind(&node::HeartbeatThread, this));
@@ -780,7 +781,6 @@ void node::HeartbeatThread() {
   LOG(debug_level_) << "Starting Heartbeat Thread at " << sAddr;
   while(1) {
     bool should_sleep = true;
-
 
     // Copy it so we don't have to lock while heartbeating
     decltype(rpc_) sockets_copy;
