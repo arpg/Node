@@ -187,7 +187,9 @@ bool node::init(std::string node_name) {
                     &_DeleteFromResourceTableFunc, this);
 
   rpc_thread_ = std::thread(std::bind(&node::RPCThread, this));
-  usleep(100);  // Sleep to split log messages
+
+  // Sleep briefly to split log messages
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   heartbeat_thread_ = std::thread(std::bind(&node::HeartbeatThread, this));
 
   // ask avahi who's around, and get their resource tables, also build our table
@@ -337,7 +339,6 @@ bool node::call_rpc(NodeSocket socket,
                             << dTimeTaken << " ms > " << timeout_ms << " ms).";
           return false;
         }
-        usleep(100); // wait a bit
       }
     }
   } catch(const zmqpp::exception& error) {
@@ -781,7 +782,6 @@ void node::HeartbeatThread() {
   while(1) {
     bool should_sleep = true;
 
-
     // Copy it so we don't have to lock while heartbeating
     decltype(rpc_) sockets_copy;
     {
@@ -854,7 +854,7 @@ void node::HeartbeatThread() {
     if (exiting_) {
       return;
     } else if (should_sleep) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     if (exiting_) return;
   }
@@ -1023,7 +1023,7 @@ void node::_UpdateNodeRegistery() {
     LOG(debug_level_)
         << "Waiting for _hermes._tcp to appear in ZeroConf registery";
     records = zero_conf_.BrowseForServiceType("_hermes._tcp");
-    usleep(1000);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   LOG(debug_level_) << "Found " << records.size() << " _hermes._tcp "
                     << "records in ZeroConf";
