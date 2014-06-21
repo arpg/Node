@@ -1,7 +1,7 @@
-/* 
+/*
  * File:   actor.cpp
  * Author: xaqq
- * 
+ *
  * Created on May 20, 2014, 10:51 PM
  */
 
@@ -13,8 +13,22 @@
 #include "context.hpp"
 
 #include <iostream>
+#include <sstream>
 
 zmqpp::context zmqpp::actor::actor_pipe_ctx_;
+
+// Patch for Android NDK which doesn't have C99 enabled.
+#ifdef ANDROID
+namespace std {
+template<typename T>
+std::string to_string(const T& n)
+{
+  std::ostringstream stm;
+  stm << n;
+  return stm.str();
+}
+}
+#endif
 
 namespace zmqpp
 {

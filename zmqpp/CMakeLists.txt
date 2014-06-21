@@ -44,6 +44,6 @@ set(SRCS
 
 def_library(zmqpp
   SOURCES ${SRCS}
-  LINK_LIBS zmq
+  LINK_LIBS ${ZeroMQ_LIBRARY}
   PACKAGE Node
   )
