@@ -17,9 +17,9 @@ endif()
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter")
 
-find_package(ZeroMQ QUIET)
-find_package(Protobuf QUIET)
-find_package(MINIGLOG QUIET)
+find_package(ZeroMQ)
+find_package(Protobuf)
+find_package(MINIGLOG)
 
 if(NOT APPLE)
   find_package(DNSSD)
@@ -73,8 +73,8 @@ if(ANDROID)
   list(APPEND PROJ_INCLUDE_DIRS android-ifaddrs)
 endif()
 
-add_subdirectory(zmqpp)
 include_directories(${PROJ_INCLUDE_DIRS})
+add_subdirectory(zmqpp)
 
 # Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
