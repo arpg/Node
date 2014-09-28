@@ -11,9 +11,9 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
-#include <boost/crc.hpp>  // for boost::crc_32_
 #include <Node/TicToc.h>
 #include <Node/ZeroConf.h>
+#include <Node/crc.h>
 
 std::vector<node::node*> g_vNodes;
 
@@ -974,13 +974,11 @@ msg::ResourceTable node::_BuildResourceTableMessage(msg::ResourceTable& t) {
 }
 
 uint32_t node::_ResourceTableCRC() {
-  boost::crc_32_type crc;
   std::string vNames;
   for (auto it = resource_table_.begin() ; it != resource_table_.end(); ++it) {
     vNames += it->first;
   }
-  crc.process_bytes(vNames.c_str(), vNames.size());
-  return crc.checksum();
+  return crc32buf(vNames.c_str(), vNames.size());  
 }
 
 void node::_PropagateResourceTable() {
