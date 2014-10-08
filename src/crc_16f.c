@@ -12,18 +12,18 @@
  * Compile with -DMAKETAB to print values for crctab to stdout
  */
 
-#include "crc.h"
+#include "Node/crc.h"
 
-    /* the CRC polynomial. This is used by XMODEM (almost CCITT).
-     * If you change P, you must change crctab[]'s initial value to what is
-     * printed by initcrctab()
-     */
+/* the CRC polynomial. This is used by XMODEM (almost CCITT).
+ * If you change P, you must change crctab[]'s initial value to what is
+ * printed by initcrctab()
+ */
 #define   P    0x1021
 
-    /* number of bits in CRC: don't change it. */
+/* number of bits in CRC: don't change it. */
 #define W 16
 
-    /* this the number of bits per char: don't change it. */
+/* this the number of bits per char: don't change it. */
 #define B 8
 
 static uint16_t crctab[1<<B] = { /* as calculated by initcrctab() */

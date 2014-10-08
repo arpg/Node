@@ -1,7 +1,7 @@
 /* Crc - 32 BIT ANSI X3.66 CRC checksum files */
 
 #include <stdio.h>
-#include "crc.h"
+#include "Node/crc.h"
 
 #ifdef __TURBOC__
  #pragma warn -cln
@@ -18,10 +18,6 @@
 |* PUB 78 says that the 32-bit FCS reduces otherwise undetected       *|
 |* errors by a factor of 10^-5 over 16-bit FCS.                       *|
 \**********************************************************************/
-
-/* Need an unsigned type capable of holding 32 bits; */
-
-typedef uint32_t UNS_32_BITS;
 
 /* Copyright (C) 1986 Gary S. Brown.  You may use this program, or
    code or tables extracted from it, as desired without restriction.*/
@@ -69,7 +65,10 @@ typedef uint32_t UNS_32_BITS;
 /*     hardware you could probably optimize the shift in assembler by  */
 /*     using byte-swap instructions.                                   */
 
-static UNS_32_BITS crc_32_tab[] = { /* CRC polynomial 0xedb88320 */
+#define UPDC32(octet,crc) (crc_32_tab[((crc)\
+      ^ ((uint8_t)octet)) & 0xff] ^ ((crc) >> 8))
+
+static uint32_t crc_32_tab[] = { /* CRC polynomial 0xedb88320 */
 0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
 0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
 0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,
