@@ -1276,6 +1276,37 @@ void node::NodeSignalHandler(int nSig) {
     case SIGSEGV: LOG(ERROR) << "Caught SIGSEGV"; break;
     default:      LOG(ERROR) << "NodeSignalHandler caught "<< strsignal(nSig);
   }
+
+  // uninstall signal handler
+  signal(SIGHUP       , SIG_DFL);
+  signal(SIGINT       , SIG_DFL);
+  signal(SIGQUIT      , SIG_DFL);
+  signal(SIGILL       , SIG_DFL);
+  signal(SIGTRAP      , SIG_DFL);
+  signal(SIGABRT      , SIG_DFL);
+  signal(SIGFPE       , SIG_DFL);
+  signal(SIGKILL      , SIG_DFL);
+  signal(SIGBUS       , SIG_DFL);
+  signal(SIGSEGV      , SIG_DFL);
+  signal(SIGSYS       , SIG_DFL);
+  signal(SIGPIPE      , SIG_DFL);
+  signal(SIGALRM      , SIG_DFL);
+  signal(SIGTERM      , SIG_DFL);
+  signal(SIGURG       , SIG_DFL);
+  signal(SIGSTOP      , SIG_DFL);
+  signal(SIGTSTP      , SIG_DFL);
+  signal(SIGCONT      , SIG_DFL);
+  signal(SIGCHLD      , SIG_DFL);
+  signal(SIGTTIN      , SIG_DFL);
+  signal(SIGTTOU      , SIG_DFL);
+  signal(SIGIO        , SIG_DFL);
+  signal(SIGXCPU      , SIG_DFL);
+  signal(SIGXFSZ      , SIG_DFL);
+  signal(SIGVTALRM    , SIG_DFL);
+  signal(SIGPROF      , SIG_DFL);
+  signal(SIGUSR1      , SIG_DFL);
+  signal(SIGUSR2      , SIG_DFL);
+
   for (size_t ii = 0; ii < g_vNodes.size(); ++ii) {
     g_vNodes[ii]->_BroadcastExit();
   }
