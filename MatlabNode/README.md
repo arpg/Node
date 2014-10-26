@@ -1,12 +1,19 @@
 MATLAB connection for Node library
 ====================================
 
-This directory serves as an example of how to build a connection between a C++ class and the MATLAB computation library. It runs on the MEX C++ interface designed by MATLAB. If you design the code correctly, the interface works remarkably well, though it can be tricky. I recommend that this interface be used for personal testing only, until a more distributed design can be solved. 
+This directory serves as an example of how to build a connection between a C++
+class and the MATLAB computation library. It runs on the MEX C++ interface
+designed by MATLAB. If you design the code correctly, the interface works
+remarkably well, though it can be tricky. I recommend that this interface be
+used for personal testing only, until a more distributed design can be solved. 
 
 BUILDING AND RUNNING THE DEMO
 ===================================
 
-This demo serves as a basic outline for any MATLAB-Node interface. It instantiates n nodes on the C++ side, connects them all to a node on the MATLAB side, and sends random integers back and forth. As noted, there are two main parts: The MATLAB side and the C++ side.
+This demo serves as a basic outline for any MATLAB-Node interface. It
+instantiates n nodes on the C++ side, connects them all to a node on the MATLAB
+side, and sends random integers back and forth. As noted, there are two main
+parts: The MATLAB side and the C++ side.
 
 Build
 ------
@@ -14,7 +21,8 @@ MATLAB side: Run
 
 	make
 
-in the top directory to create the .mex file that MATLAB uses to communicate with the class found in NodeSim.h
+in the top directory to create the .mex file that MATLAB uses to communicate
+with the class found in NodeSim.h
 
 C++ side:
 
@@ -29,7 +37,9 @@ Run
 ------
 1. Modify the Makefile to fit your libraries and MATLAB version
 2. Medify MatNodeExample.h's #include for Protobufs to fit your directory
-3. Initialize a NodeSim instance. This starts a node thread running. Create as many as you'd like (in different windows), but make sure to name them in cardinal order:
+3. Initialize a NodeSim instance. This starts a node thread running. Create as
+   many as you'd like (in different windows), but make sure to name them in
+   cardinal order:
 
 	./NodeSim Sim0
 	./NodeSim Sim1
@@ -39,11 +49,14 @@ Run
 
     node = MatNode(<num_sims>)
 
-where <num_sims> is the number of NodeSims that you have currently spinning. This starts the node instance for MATLAB and connects it (both advertising and subscribing) to each NodeSim. Next, run
+where <num_sims> is the number of NodeSims that you have currently spinning.
+This starts the node instance for MATLAB and connects it (both advertising and
+subscribing) to each NodeSim. Next, run
 
 	node.Run
 
-This will start checking each instance for an integer, 0 or 1, and printing what it received.
+This will start checking each instance for an integer, 0 or 1, and printing
+what it received.
 
 MODIFYING THE CODE
 ==================
@@ -57,7 +70,11 @@ The code distribution is as follows:
   - class_handle.hpp: DO NOT MODIFY. Helps MEX interact with C++ classes.
   - Makefile: Compiles our MEX file for use.
 
-If changing MatNodeExample.h, be mindful that you must change MatNodeExample.cpp as well. Only call functions from within the MATLAB class you create in MatNode; don't call MatNodeExample directly. If you have compilation errors after compiling, make sure to read the comments within Makefile. They probably have the answer to your question.
+If changing MatNodeExample.h, be mindful that you must change
+MatNodeExample.cpp as well. Only call functions from within the MATLAB class
+you create in MatNode; don't call MatNodeExample directly. If you have
+compilation errors after compiling, make sure to read the comments within
+Makefile. They probably have the answer to your question.
 
 - C++ side:
   - NodeSim.h and NodeSim.cpp: Creates the program NodeSim. A regular class structure and nothing special, except that it calls the MATLAB node instance

@@ -1,5 +1,6 @@
-project(Node)
-cmake_minimum_required(VERSION 2.8)
+cmake_policy( SET CMP0048 NEW ) # for project versioning
+project(Node VERSION 0.3 )
+cmake_minimum_required( VERSION 3.0 )
 enable_testing()
 
 # Add to module path, so we can find our cmake modules
@@ -14,7 +15,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOS_OBJECT_USE_OBJC=0")
 endif()
 
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-unused-parameter")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter")
 
 find_package(ZeroMQ)
@@ -63,8 +64,8 @@ endif()
 
 PROTOBUF_GENERATE_CPP(PROTO_HDRS PROTO_SRCS NodeMessages.proto)
 
-set(NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h ${PROTO_HDRS})
-set(NODE_SRCS src/Node.cpp src/ZeroConf.cpp ${PROTO_SRCS})
+set(NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h include/Node/crc.h ${PROTO_HDRS})
+set(NODE_SRCS src/Node.cpp src/ZeroConf.cpp src/crc_16.c src/crc_16f.c src/crc_32.c ${PROTO_SRCS})
 
 if(ANDROID)
   list(APPEND NODE_HDRS android-ifaddrs/ifaddrs.h)
