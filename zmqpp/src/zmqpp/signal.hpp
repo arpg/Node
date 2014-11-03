@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include "compatibility.hpp"
 
 namespace zmqpp
 {
@@ -10,7 +11,7 @@ namespace zmqpp
      * Signal is a 8 bytes integer. 7 first bytes acts as a magic number so we can distinguish signal
      * from other message. The last byte is the signal's value.
      */
-    enum class signal : int64_t
+    ZMQPP_COMPARABLE_ENUM signal : int64_t
     {
 	/**
 	 * Only 7 bytes matter here

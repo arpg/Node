@@ -388,24 +388,24 @@ BOOST_AUTO_TEST_CASE( test_receive_send_signals )
     zmqpp::context ctx;
     zmqpp::socket p1(ctx, zmqpp::socket_type::pair);
     zmqpp::socket p2(ctx, zmqpp::socket_type::pair);
-    
+
     p1.bind("inproc://test");
     p2.connect("inproc://test");
-    
+
     p1.send(zmqpp::signal::test);
     p1.send("....");
     p1.send(zmqpp::signal::stop);
 
     zmqpp::signal s;
     std::string str;
-    
+
     p2.receive(s);
     BOOST_CHECK_EQUAL(zmqpp::signal::test, s);
     p2.receive(str);
     p2.send(zmqpp::signal::test);
     p2.receive(s);
     BOOST_CHECK_EQUAL(zmqpp::signal::stop, s);
-    
+
     p1.receive(s);
     BOOST_CHECK_EQUAL(zmqpp::signal::test, s);
 }
@@ -415,10 +415,10 @@ BOOST_AUTO_TEST_CASE( test_wait )
     zmqpp::context ctx;
     zmqpp::socket p1(ctx, zmqpp::socket_type::pair);
     zmqpp::socket p2(ctx, zmqpp::socket_type::pair);
-    
+
     p1.bind("inproc://test");
     p2.connect("inproc://test");
-    
+
     p1.send(zmqpp::signal::test);
     p1.send("....");
     p1.send("___");
@@ -428,5 +428,95 @@ BOOST_AUTO_TEST_CASE( test_wait )
     BOOST_CHECK_EQUAL(zmqpp::signal::test, p2.wait());
     BOOST_CHECK_EQUAL(zmqpp::signal::stop, p2.wait());
 }
+
+BOOST_AUTO_TEST_CASE( test_signal_block_noblock )
+{
+    zmqpp::context ctx;
+    zmqpp::socket p1(ctx, zmqpp::socket_type::pair);
+    zmqpp::socket p2(ctx, zmqpp::socket_type::pair);
+
+    p1.bind("inproc://test");
+
+    BOOST_CHECK_EQUAL(false, p1.send(zmqpp::signal::test, true)); //noblock
+    //p1.send(zmqpp::signal::test); // would block indefinitely
+    p2.connect("inproc://test");
+
+    zmqpp::signal sig;
+    BOOST_CHECK_EQUAL(false, p1.receive(sig, true)); //noblock
+    p1.send(zmqpp::signal::test);
+    BOOST_CHECK_EQUAL(true, p2.receive(sig, true)); //noblock
+}
+
+#ifndef TRAVIS_CI_BUILD //do not run when building on travis-ci (this cause oom error and kill the test process)
+BOOST_AUTO_TEST_CASE( sending_large_messages_string )
+{
+	zmqpp::context context;
+
+	zmqpp::socket pusher(context, zmqpp::socket_type::push);
+	pusher.bind("inproc://test");
+
+	zmqpp::socket puller(context, zmqpp::socket_type::pull);
+	puller.connect("inproc://test");
+
+	std::string message;
+    const size_t bytes_to_send = static_cast<size_t>(1024 * 1024 * 1024);
+    message.reserve(bytes_to_send);
+    for (size_t i = 0; i < bytes_to_send; i++)
+    {
+        message.push_back('A' + (i % 26));
+    }
+
+	BOOST_CHECK(pusher.send(message));
+
+	zmq_pollitem_t item = { puller, 0, ZMQ_POLLIN, 0 };
+    const int poll_timeout = 1000000;
+	int result = zmq_poll(&item, 1, poll_timeout);
+	BOOST_REQUIRE_MESSAGE(result >= 0, "polling command returned without expected value: " << zmq_strerror(zmq_errno()));
+	BOOST_REQUIRE_MESSAGE(0 != result, "polling command returned with timeout after " << poll_timeout << " milliseconds");
+	BOOST_REQUIRE_MESSAGE(1 == result, "polling command claims " << result << " sockets have events but we only gave it one");
+	BOOST_REQUIRE_MESSAGE(item.revents & ZMQ_POLLIN, "events do not match expected POLLIN event: " << item.revents);
+
+    std::string received_message;
+
+	BOOST_CHECK(puller.receive(received_message));
+	BOOST_CHECK_EQUAL(0, message.compare(received_message));
+	BOOST_CHECK(!puller.has_more_parts());
+}
+#endif
+
+#if (ZMQ_VERSION_MAJOR >= 4)
+BOOST_AUTO_TEST_CASE( test_simple_monitor )
+{
+    zmqpp::context ctx;
+    zmqpp::socket server(ctx, zmqpp::socket_type::push);
+    server.bind("tcp://*:55443");
+
+    server.monitor("inproc://test_monitor", zmqpp::event::all);
+
+    zmqpp::socket monitor(ctx, zmqpp::socket_type::pair);
+    monitor.connect("inproc://test_monitor");
+
+    zmqpp::socket client(ctx, zmqpp::socket_type::pull);
+    client.connect("tcp://localhost:55443");
+
+    zmqpp::message_t message;
+    BOOST_CHECK( monitor.receive( message ) );
+    BOOST_REQUIRE_EQUAL(2, message.parts());
+
+#if (ZMQ_VERSION_MINOR >= 1)
+    const uint8_t *ptr = reinterpret_cast<const uint8_t *>(message.raw_data(0));
+    uint16_t ev = *(reinterpret_cast<const uint16_t *>(ptr));
+    // uint32_t value = *(reinterpret_cast<const uint32_t *>(ptr + 2));
+    BOOST_CHECK_EQUAL( zmqpp::event::accepted, ev );
+    BOOST_CHECK_EQUAL("tcp://0.0.0.0:55443", message.get(1));
+    // value is the underlying file descriptor. we cannot check its value against anything meaningful
+#else
+    zmq_event_t const* event = static_cast<zmq_event_t const*>( message.raw_data(0) );
+    BOOST_CHECK_EQUAL( zmqpp::event::accepted, event->event );
+    BOOST_CHECK_EQUAL( 0, event->value );
+    BOOST_CHECK_EQUAL("tcp://0.0.0.0:55443", message.get(1));
+#endif
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

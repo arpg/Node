@@ -1,34 +1,21 @@
-/*
+/* 
  * File:   actor.cpp
  * Author: xaqq
- *
+ * 
  * Created on May 20, 2014, 10:51 PM
  */
 
+#include <cassert>
+#include <cstdlib>
+#include <iostream>
+
 #include "actor.hpp"
 #include "socket.hpp"
-#include <cassert>
 #include "message.hpp"
 #include "exception.hpp"
 #include "context.hpp"
 
-#include <iostream>
-#include <sstream>
-
 zmqpp::context zmqpp::actor::actor_pipe_ctx_;
-
-// Patch for Android NDK which doesn't have C99 enabled.
-#ifdef ANDROID
-namespace std {
-template<typename T>
-std::string to_string(const T& n)
-{
-  std::ostringstream stm;
-  stm << n;
-  return stm.str();
-}
-}
-#endif
 
 namespace zmqpp
 {
@@ -38,9 +25,10 @@ namespace zmqpp
     child_pipe_(nullptr),
     stopped_(false)
     {
-        std::string pipe_endpoint = "inproc://zmqpp::actor::" + std::to_string(reinterpret_cast<ptrdiff_t> (this));
-        parent_pipe_ = new socket(actor_pipe_ctx_, socket_type::pair);
-        parent_pipe_->bind(pipe_endpoint);
+      std::string pipe_endpoint;
+
+      parent_pipe_ = new socket(actor_pipe_ctx_, socket_type::pair);
+      pipe_endpoint = bind_parent();
 
         child_pipe_ = new socket(actor_pipe_ctx_, socket_type::pair);
         child_pipe_->connect(pipe_endpoint);
@@ -58,14 +46,32 @@ namespace zmqpp
         }
     }
 
+  actor::actor(actor &&o)
+  {
+    *this = std::move(o);
+  }
+
+  actor &actor::operator=(actor &&o)
+  {
+    parent_pipe_ = o.parent_pipe_;
+    stopped_ = o.stopped_;
+    retval_ = o.retval_;
+    o.parent_pipe_ = nullptr;
+
+    return *this;
+  }
+
     actor::~actor()
     {
         stop(true);
         delete parent_pipe_;
     }
 
-    bool actor::stop(bool block)
+    bool actor::stop(bool block /* = false */)
     {
+        if (!parent_pipe_)
+	  return false;
+      
         parent_pipe_->send(signal::stop, true);
         if (!block)
         {
@@ -101,6 +107,27 @@ namespace zmqpp
     const socket* actor::pipe() const
     {
         return parent_pipe_;
+    }
+
+    std::string actor::bind_parent()
+    {
+      std::string base_endpoint = "inproc://zmqpp::actor::" + std::to_string(reinterpret_cast<ptrdiff_t> (this));
+	
+	while (true)
+	  {
+	    try
+	      {
+		std::string endpoint = base_endpoint + std::to_string(std::rand());
+		parent_pipe_->bind(endpoint);
+		return endpoint;
+	      }
+	    catch (zmq_internal_exception &e)
+	      {
+		// endpoint already taken.
+	      }
+	  }
+
+
     }
 
 }

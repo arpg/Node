@@ -16,6 +16,7 @@
 
 #include "compatibility.hpp"
 
+#include "socket_mechanisms.hpp"
 #include "socket_types.hpp"
 #include "socket_options.hpp"
 #include "signal.hpp"
@@ -30,6 +31,24 @@ typedef std::string endpoint_t;
 typedef context     context_t;
 typedef message     message_t;
 
+#if (ZMQ_VERSION_MAJOR >= 4)
+namespace event
+{
+	const int connected        = ZMQ_EVENT_CONNECTED;       /*<! connection established */
+	const int connect_delayed  = ZMQ_EVENT_CONNECT_DELAYED; /*<! synchronous connect failed, it's being polled */
+	const int connect_retried  = ZMQ_EVENT_CONNECT_RETRIED; /*<! asynchronous connect / reconnection attempt */
+	const int listening        = ZMQ_EVENT_LISTENING;       /*<! socket bound to an address, ready to accept connections */
+	const int bind_failed      = ZMQ_EVENT_BIND_FAILED;     /*<! socket could not bind to an address */
+	const int accepted         = ZMQ_EVENT_ACCEPTED;        /*<! connection accepted to bound interface */
+	const int accept_failed    = ZMQ_EVENT_ACCEPT_FAILED;   /*<! could not accept client connection */
+	const int closed           = ZMQ_EVENT_CLOSED;          /*<! connection closed */
+	const int close_failed     = ZMQ_EVENT_CLOSE_FAILED;    /*<! connection couldn't be closed */
+	const int disconnected     = ZMQ_EVENT_DISCONNECTED;    /*<! broken session */
+
+	const int all              = ZMQ_EVENT_ALL;             /*<! all event flags */
+}
+#endif
+
 /*!
  * The socket class represents the zmq sockets.
  *
@@ -39,7 +58,8 @@ typedef message     message_t;
  * The routing is handled by zmq based on the type set.
  *
  * The bound side of an inproc connection must occur first and inproc can only
- * connect to other inproc sockets of the same context.
+ * connect to other inproc sockets of the same context. This has been solved in
+ * 0mq 4.0 or later and is not a requirement of inproc.
  *
  * This class is c++0x move supporting and cannot be copied.
  */
@@ -85,12 +105,14 @@ public:
 	 */
 	void bind(endpoint_t const& endpoint);
 
+#if (ZMQ_VERSION_MAJOR > 3) || ((ZMQ_VERSION_MAJOR == 3) && (ZMQ_VERSION_MINOR >= 2))
 	/*!
 	 * Unbinds from a previously bound endpoint.
 	 *
 	 * \param endpoint the zmq endpoint to bind to
 	 */
 	void unbind(endpoint_t const& endpoint);
+#endif
 
 	/*!
 	 * Asynchronously connects to an endpoint.
@@ -132,6 +154,7 @@ public:
 	 *
 	 * \param endpoint the zmq endpoint to disconnect from
 	 */
+#if (ZMQ_VERSION_MAJOR > 3) || ((ZMQ_VERSION_MAJOR == 3) && (ZMQ_VERSION_MINOR >= 2))
 	void disconnect(endpoint_t const& endpoint);
 
 	/*!
@@ -150,6 +173,7 @@ public:
 			disconnect(*it);
 		}
 	}
+#endif
 
 	/*!
 	 * Closes the internal zmq socket and marks this instance
@@ -204,31 +228,32 @@ public:
 	 * \return true if message part received, false if it would have blocked
 	 */
 	bool receive(std::string& string, int const flags = normal);
-	
+
 	/**
 	 * Sends a signal over the socket.
-	 * 
-	 * If the socket::DONT_WAIT flag and we are unable to add a new message to
-	 * socket then this function will return false.
+	 *
+	 * If dont_block is true and we are unable to send the signal e then this
+	 * function will return false.
+	 *
 	 * @param sig signal to send.
 	 * @param flags message send flags
 	 * @return true if message part sent, false if it would have blocked
 	 */
-	bool send(signal sig, int const flags = normal);
+	bool send(signal sig, bool dont_block = false);
 
 
     	/*!
 	 * If there is a message ready then we read a signal from it.
 	 *
-	 * If the socket::DONT_WAIT flag and there is no message ready to receive
-	 * then this function will return false.
+	 * If dont_block is true and we are unable to send the signal then this
+	 * function will return false.
 	 *
 	 * \param sig signal to receive into
 	 * \param flags message receive flags
 	 * \return true if signal received, false if it would have blocked
 	 */
-	bool receive(signal &sig, int const flags = normal);
-	
+	bool receive(signal &sig, bool dont_block = false);
+
 	/*!
 	 * Sends the byte data pointed to by buffer as the next part of the message.
 	 *
@@ -257,7 +282,7 @@ public:
 	 * \param flags message receive flags
 	 * \return true if message part received, false if it would have blocked
 	 */
-	bool receive_raw(char* buffer, int& length, int const flags = normal);
+	bool receive_raw(char* buffer, size_t& length, int const flags = normal);
 
 	/*!
 	 *
@@ -365,7 +390,7 @@ public:
 	 * \since 2.0.0 (built against 0mq version 3.1.x or later)
 	 *
 	 * \param option a valid ::socket_option
-	 * \param value to set the option to
+	 * \param value to set the optionbool to
 	 */
 	void set(socket_option const option, bool const value);
 
@@ -465,15 +490,27 @@ public:
 		return value;
 	}
 
-	/**
+#if (ZMQ_VERSION_MAJOR >= 4)
+	/*!
+	 * Attach a monitor to this socket that will send events over inproc to the
+	 * specified endpoint. The monitor will bind on the endpoint given and will
+	 * be of type PAIR but not read from the stream.
+	 *
+	 * \param monitor_endpoint the valid inproc endpoint to bind to.
+	 * \param events_required a bit mask of required events.
+	 */
+	void monitor(endpoint_t const monitor_endpoint, int events_required);
+#endif
+
+	/*!
 	 * Wait on signal, this is useful to coordinate thread.
 	 * Block until a signal is received, and returns the received signal.
-	 * 
+	 *
 	 * Discard everything until something that looks like a signal is received.
-	 * @return the signal.
+	 * \return the signal.
 	 */
 	signal wait();
-	
+
 	/*!
 	 * Move constructor
 	 *

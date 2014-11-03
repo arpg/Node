@@ -16,9 +16,12 @@ namespace zmqpp
  * \brief possible Context options in zmq
  */
 
-enum class context_option {
+ZMQPP_COMPARABLE_ENUM context_option {
 	io_threads  = ZMQ_IO_THREADS,          /*!< I/O thread count */
 	max_sockets = ZMQ_MAX_SOCKETS,         /*!< Maximum supported sockets */
+#if (ZMQ_VERSION_MAJOR >= 4)
+	ipv6        = ZMQ_IPV6                 /*!< Enable ipv6 for all new sockets */
+#endif
 };
 
 }
