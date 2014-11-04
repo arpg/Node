@@ -23,8 +23,8 @@ find_package(Protobuf REQUIRED)
 find_package(MINIGLOG REQUIRED)
 
 if(NOT APPLE)
-  find_package(DNSSD)
-  find_package(Avahi)
+  find_package(DNSSD REQUIRED)
+  find_package(Avahi REQUIRED)
 endif(NOT APPLE)
 
 if(DNSSD_FOUND OR APPLE)
