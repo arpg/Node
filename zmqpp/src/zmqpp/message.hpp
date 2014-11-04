@@ -8,6 +8,7 @@
 #ifndef ZMQPP_MESSAGE_HPP_
 #define ZMQPP_MESSAGE_HPP_
 
+#include <cassert>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -129,13 +130,6 @@ public:
 	}
 
 	// Copy operators will take copies of any data
-	template<typename Type>
-	void add(Type *part, size_t const size)
-	{
-		_parts.push_back( frame( part, size ) );
-	}
-
-
 	template<typename Type, typename ...Args>
 	void add(Type const& part, Args &&...args)
 	{
@@ -147,6 +141,22 @@ public:
 	void add(Type const part)
 	{
 		*this << part;
+	}
+
+	// Copy operators will take copies of any data with a given size
+	template<typename Type>
+	void add_raw(Type *part, size_t const data_size)
+	{
+		_parts.push_back( frame( part, data_size ) );
+	}
+
+	// Use exact data past, neither zmqpp nor 0mq will copy, alter or delete
+	// this data. It must remain as valid for at least the lifetime of the
+	// 0mq message, recommended only with const data.
+	template<typename Type>
+	void add_const(Type *part, size_t const data_size)
+	{
+		_parts.push_back( frame( part, data_size, nullptr, nullptr ) );
 	}
 
 	// Stream reader style
@@ -202,9 +212,9 @@ public:
 
 	void pop_front();
 
-	void push_back(void const* part, size_t const size)
+	void push_back(void const* part, size_t const data_size)
 	{
-		add( part, size );
+		add_raw( part, data_size );
 	}
 
 	template<typename Type>
@@ -242,6 +252,21 @@ public:
 	 */
 	bool is_signal() const;
 
+	/**
+	 * Gets the read cursor. For using get_raw() with stream-style reading.
+	 */
+	size_t read_cursor() const NOEXCEPT { return _read_cursor; }
+
+	/**
+	 * Gets the remaining number of parts in the message.
+	 */
+	size_t remaining() const NOEXCEPT { return  _parts.size() - _read_cursor; }
+
+	/**
+	 * Moves the read cursor to the next element.
+	 * @return the new read_cursor
+	 */
+	size_t next() NOEXCEPT { return ++_read_cursor; }
 private:
 	typedef std::vector<frame> parts_type;
 	parts_type _parts;

@@ -30,8 +30,9 @@ BOOST_AUTO_TEST_CASE( throws_exception_reading_invalid_part )
 	BOOST_CHECK_THROW(message.get(0), zmqpp::exception);
 }
 
-BOOST_AUTO_TEST_CASE( move_supporting )
+BOOST_AUTO_TEST_CASE( move_construction_supporting )
 {
+	std::string test;
 	zmqpp::message first;
 	first.add("string");
 	BOOST_CHECK_EQUAL(1, first.parts());
@@ -39,6 +40,74 @@ BOOST_AUTO_TEST_CASE( move_supporting )
 	zmqpp::message second( std::move(first) );
 	BOOST_CHECK_EQUAL(1, second.parts());
 	BOOST_CHECK_EQUAL(0, first.parts());
+
+	// read cursor
+	zmqpp::message boap;
+	boap.add("string");
+	boap.add("string2");
+
+	boap >> test;
+	BOOST_CHECK_EQUAL("string", test);
+
+	zmqpp::message boap2( std::move(boap));
+	boap2 >> test;
+	BOOST_CHECK_EQUAL("string2", test);
+}
+
+BOOST_AUTO_TEST_CASE( move_construction_supporting2 )
+{
+	std::string test;
+	zmqpp::message first;
+	first.add("string");
+	first.add("string2");
+	BOOST_CHECK_EQUAL(2, first.parts());
+	first >> test;
+
+	zmqpp::message second( std::move(first) );
+	first.add("str");
+	first >> test;
+}
+
+BOOST_AUTO_TEST_CASE( move_assignment_supporting )
+{
+ 	zmqpp::message first;
+	first.add("string");
+
+ 	zmqpp::message second;
+	second.add("blah");
+	second = std::move(first);
+ 	BOOST_CHECK_EQUAL(1, second.parts());
+ 	BOOST_CHECK_EQUAL(0, first.parts());
+
+	zmqpp::message boap;
+	boap.add("string");
+	boap.add("string2");
+
+	std::string test;
+	boap >> test;
+	BOOST_CHECK_EQUAL("string", test);
+
+	zmqpp::message boap2;
+	boap2 = std::move(boap);
+	boap2 >> test;
+	BOOST_CHECK_EQUAL("string2", test);
+}
+
+BOOST_AUTO_TEST_CASE( move_assignment_supporting2 )
+{
+	std::string test;
+	zmqpp::message first;
+	first.add("string");
+	first.add("string2");
+	BOOST_CHECK_EQUAL(2, first.parts());
+	first >> test;
+	BOOST_CHECK_EQUAL("string", test);
+
+	zmqpp::message second;
+	second = std::move(first);
+	first.add("str");
+	first >> test;
+	BOOST_CHECK_EQUAL("str", test);
 }
 
 BOOST_AUTO_TEST_CASE( copyable )
@@ -94,7 +163,7 @@ BOOST_AUTO_TEST_CASE( copy_part )
 	memcpy(data, "tests", data_size);
 
 	zmqpp::message* msg = new zmqpp::message();
-	msg->add(data, data_size);
+	msg->add_raw(data, data_size);
 
 	BOOST_REQUIRE_EQUAL(1, msg->parts());
 	BOOST_CHECK_EQUAL(strlen("tests"), msg->size(0));
@@ -106,6 +175,7 @@ BOOST_AUTO_TEST_CASE( copy_part )
 
 	free(data);
 }
+
 BOOST_AUTO_TEST_CASE( add_const_void )
 {
 	size_t data_size = strlen("tests");
@@ -116,7 +186,7 @@ BOOST_AUTO_TEST_CASE( add_const_void )
 
 	zmqpp::message* msg = new zmqpp::message();
 
-	msg->add((void const*)data, data_size);
+	msg->add_raw((void const*)data, data_size);
 
 	BOOST_REQUIRE_EQUAL(1, msg->parts());
 	BOOST_CHECK_EQUAL(strlen("tests"), msg->size(0));
@@ -128,13 +198,14 @@ BOOST_AUTO_TEST_CASE( add_const_void )
 
 	free(data);
 }
+
 BOOST_AUTO_TEST_CASE( add_char_star )
 {
 	char data[] = "tests";
 
 	zmqpp::message* msg = new zmqpp::message();
 
-	msg->add((char *)data, strlen(data));
+	msg->add_raw((char *)data, strlen(data));
 
 	BOOST_REQUIRE_EQUAL(1, msg->parts());
 	BOOST_CHECK_EQUAL(strlen("tests"), msg->size(0));
@@ -151,7 +222,7 @@ BOOST_AUTO_TEST_CASE( add_const_char_star )
 
 	zmqpp::message* msg = new zmqpp::message();
 
-	msg->add((char const *)data, strlen(data));
+	msg->add_raw((char const *)data, strlen(data));
 
 	BOOST_REQUIRE_EQUAL(1, msg->parts());
 	BOOST_CHECK_EQUAL(strlen("tests"), msg->size(0));
@@ -168,7 +239,7 @@ BOOST_AUTO_TEST_CASE( add_char_literal_and_size_t )
 
 	zmqpp::message* msg = new zmqpp::message();
 
-	msg->add("tests", strlen("tests"));
+	msg->add_raw("tests", strlen("tests"));
 
 	BOOST_REQUIRE_EQUAL(1, msg->parts());
 	BOOST_CHECK_EQUAL(strlen("tests"), msg->size(0));
@@ -438,19 +509,25 @@ BOOST_AUTO_TEST_CASE( pop_front_of_frame_queue )
 	}
 }
 
-#ifdef ZMQPP_NON_CONST_STREAM_OPERATORS_MOVE
-BOOST_AUTO_TEST_CASE( stream_move_input_string )
+BOOST_AUTO_TEST_CASE( add_const_part )
 {
-	std::string part("test part");
-	zmqpp::message message;
+	size_t data_size = strlen("tests");
+	void* data = malloc(data_size);
+	memset(data, 0, data_size);
+	memcpy(data, "tests", data_size);
 
-	message << part;
-	BOOST_CHECK_EQUAL("", part);
+	zmqpp::message* msg = new zmqpp::message();
+	msg->add_const(data, data_size);
 
-	BOOST_REQUIRE_EQUAL(1, message.parts());
-	BOOST_CHECK_EQUAL(strlen("test part"), message.size(0));
-	BOOST_CHECK_EQUAL("test part", message.get(0));
+	BOOST_REQUIRE_EQUAL(1, msg->parts());
+	BOOST_CHECK_EQUAL(strlen("tests"), msg->size(0));
+	BOOST_CHECK_EQUAL("tests", msg->get(0));
+
+	delete msg;
+
+	BOOST_CHECK_EQUAL("tests", std::string(static_cast<char*>(data), data_size));
+
+	free(data);
 }
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()

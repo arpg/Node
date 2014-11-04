@@ -34,6 +34,10 @@ public:
 	static const short poll_out;    /*!< Monitor output flag. */
 	static const short poll_error;  /*!< Monitor error flag.\n Only for file descriptors. */
 
+#if ((ZMQ_VERSION_MAJOR == 4 && ZMQ_VERSION_MINOR >= 2) || ZMQ_VERSION_MAJOR > 4)
+        static const short poll_pri;    /*!< Priority input flag.\n Only for file descriptors. See POLLPRI) */
+#endif
+
 	/*!
 	 * Construct an empty polling model.
 	 */
@@ -188,7 +192,7 @@ public:
 	 * \return true if there is input.
 	 */
 	template<typename Watched>
-	bool has_input(Watched const& watchable) const { return events(watchable) & poll_in; }
+	bool has_input(Watched const& watchable) const { return (events(watchable) & poll_in) != 0; }
 
 	/*!
 	 * Check either a file descriptor or socket for output events.
@@ -199,7 +203,7 @@ public:
 	 * \return true if there is output.
 	 */
 	template<typename Watched>
-	bool has_output(Watched const& watchable) const { return events(watchable) & poll_out; }
+	bool has_output(Watched const& watchable) const { return (events(watchable) & poll_out) != 0; }
 
 	/*!
 	 * Check a file descriptor.
@@ -213,7 +217,7 @@ public:
 	 * \return true if there is an error.
 	 */
 	template<typename Watched>
-	bool has_error(Watched const& watchable) const { return events(watchable) & poll_error; }
+	bool has_error(Watched const& watchable) const { return (events(watchable) & poll_error) != 0; }
 
 private:
 	std::vector<zmq_pollitem_t> _items;

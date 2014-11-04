@@ -18,13 +18,13 @@ endif()
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-unused-parameter")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter")
 
-find_package(ZeroMQ)
-find_package(Protobuf)
-find_package(MINIGLOG)
+find_package(ZeroMQ REQUIRED)
+find_package(Protobuf REQUIRED)
+find_package(MINIGLOG REQUIRED)
 
 if(NOT APPLE)
-  find_package(DNSSD)
-  find_package(Avahi)
+  find_package(DNSSD REQUIRED)
+  find_package(Avahi REQUIRED)
 endif(NOT APPLE)
 
 if(DNSSD_FOUND OR APPLE)
