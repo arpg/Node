@@ -16,9 +16,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-unused-parameter")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare")
 
 find_package(ZeroMQ REQUIRED)
+find_package(ZeroMQPP REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(MINIGLOG REQUIRED)
 
@@ -36,18 +37,20 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/NodeConfig.h.in
 set(PROJ_INCLUDE_DIRS
   ${CMAKE_BINARY_DIR}
   ${ZeroMQ_INCLUDE_DIRS}
+  ${ZeroMQPP_INCLUDE_DIRS}
   ${Avahi_INCLUDE_DIRS}
   ${PROTOBUF_INCLUDE_DIRS}
   ${Node_BINARY_DIR}
   ${Node_SOURCE_DIR}
   ${Node_SOURCE_DIR}/include
   ${MINIGLOG_INCLUDE_DIRS}
-  ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
+#  ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
   )
 
 set(PROJ_LIBRARIES
   ${PROTOBUF_LIBRARY}
   ${ZeroMQ_LIBRARIES}
+  ${ZeroMQPP_LIBRARIES}
   ${AVAHI_LIBRARIES}
   dl
   )
@@ -76,7 +79,9 @@ if(ANDROID)
 endif()
 
 include_directories(${PROJ_INCLUDE_DIRS})
-add_subdirectory(zmqpp)
+
+# not so sure we need this...
+#add_subdirectory(zmqpp)
 
 # Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
@@ -85,13 +90,13 @@ set(EXPORT_NODE_INC
   ${CMAKE_CURRENT_BINARY_DIR}
   ${PROTOBUF_INCLUDE_DIRS}
   ${ZeroMQ_INCLUDE_DIRS}
-  ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
+  ${ZeroMQPP_INCLUDE_DIRS}
   )
 
 def_library(${LIBRARY_NAME}
   SOURCES ${NODE_HDRS} ${NODE_SRCS}
   LINK_LIBS ${PROJ_LIBRARIES} miniglog
-  DEPENDS zmqpp
+#  DEPENDS zmqpp
   PACKAGE Node
   )
 
@@ -109,5 +114,5 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h"
 # For the examples to find this and only this version of Node
 set(Node_DIR ${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(Examples)
-add_subdirectory(Testing)
+# add_subdirectory(Testing)
 
