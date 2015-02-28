@@ -74,16 +74,11 @@ set(NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h include/Node/crc.h ${P
 set(NODE_SRCS src/Node.cpp src/ZeroConf.cpp src/crc_16.c src/crc_16f.c src/crc_32.c ${PROTO_SRCS})
 
 if(ANDROID)
-  list(APPEND NODE_HDRS android-ifaddrs/ifaddrs.h)
-  list(APPEND NODE_SRCS android-ifaddrs/ifaddrs.c)
-  include_directories(SYSTEM android-ifaddrs)
-  list(APPEND PROJ_INCLUDE_DIRS android-ifaddrs)
+  list(APPEND NODE_HDRS include/Node/ifaddrs.h)
+  list(APPEND NODE_SRCS src/ifaddrs.c)
 endif()
 
 include_directories(${PROJ_INCLUDE_DIRS})
-
-# not so sure we need this...
-#add_subdirectory(zmqpp)
 
 # Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
@@ -98,7 +93,6 @@ set(EXPORT_NODE_INC
 def_library(${LIBRARY_NAME}
   SOURCES ${NODE_HDRS} ${NODE_SRCS}
   LINK_LIBS ${PROJ_LIBRARIES} miniglog
-#  DEPENDS zmqpp
   PACKAGE Node
   )
 
@@ -115,6 +109,6 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h"
 
 # For the examples to find this and only this version of Node
 set(Node_DIR ${CMAKE_CURRENT_BINARY_DIR})
-add_subdirectory(Examples)
-# add_subdirectory(Testing)
+add_subdirectory(examples)
+# add_subdirectory(testing)
 

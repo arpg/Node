@@ -22,7 +22,19 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "ifaddrs.h"
+
+/*
+android-ifaddrs
+===============
+
+An implementation of getifaddrs() for Android, since the NDK does not natively support it.
+
+Works just like you would expect on regular Linux. License information is present in each file (BSD license).
+
+Originally found at: [https://github.com/kmackay/android-ifaddrs]
+*/
+
+#include "ifaddrs.h" // in ../include/Node
 
 #include <string.h>
 #include <stdlib.h>
