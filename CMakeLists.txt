@@ -1,10 +1,10 @@
 cmake_policy( SET CMP0048 NEW ) # for project versioning
 project(Node VERSION 0.3 )
-cmake_minimum_required( VERSION 3.0 )
+cmake_minimum_required( VERSION 2.8 )
 enable_testing()
 
 # Add to module path, so we can find our cmake modules
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
 
 include(def_library)
 include(export_package)
@@ -14,6 +14,8 @@ string( TOLOWER ${PROJECT_NAME} LIBRARY_NAME )
 if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOS_OBJECT_USE_OBJC=0")
 endif()
+
+#SET(BUILD_SHARED_LIBS ON)
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-unused-parameter")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare")

@@ -9,13 +9,17 @@
 #include "ExampleMessage.pb.h"
 
 #include <stdio.h>
-#include <chrono>
+#include <chrono> // for std::chrono::sleep
 #include <thread>
 
-void Node1Topic2Callback(std::shared_ptr<google::protobuf::Message> mMsg) {
-  std::shared_ptr<Msg> msg;
-  msg = std::dynamic_pointer_cast<Msg>(mMsg);
-  printf("In Callback Got '%s'\n", msg->value().c_str());//'%s'.\n", mMsg.value().c_str());
+using namespace std;
+using namespace google;
+
+void Node1Topic2Callback( shared_ptr<protobuf::Message> mMsg )
+{
+  shared_ptr<Msg> msg;
+  msg = dynamic_pointer_cast<Msg>(mMsg);
+  printf("In Callback Got '%s'\n", msg->value().c_str() );
 }
 
 int main()
@@ -25,33 +29,36 @@ int main()
   n.set_verbosity( 2 ); // make some noise on errors
   n.init("Node2");
 
-  // subscribe to Node1's topic
+  // Example subscribing to a topic published by Node1:
   if( n.subscribe( "Node1/Node1Topic" ) == false ) {
     printf("Error subscribing to Node1Topic.\n");
   }
 
-  // this is using callback.
+  // Example of failure case subscribing to a non existant topic:
   if( n.subscribe( "Node1/Node1Topic2" ) == false ) {
     printf("Error subscribing to Node1Topic2.\n");
   }
-  std::function<void(std::shared_ptr<google::protobuf::Message>)> func_ptr =
-      Node1Topic2Callback;
-  if( !n.RegisterCallback<Msg>("Node1/Node1Topic2", Node1Topic2Callback))
-    printf("Topic ain't there, can't register callback\n");
-  printf("Registered I guess\n");
 
+  // Example to register a generic callback
+  function<void(shared_ptr<protobuf::Message>)> func_ptr = Node1Topic2Callback;
+  if( !n.register_callback<Msg>("Node1/Node1Topic2", Node1Topic2Callback)){
+    printf("Topic 'Node1/Node1Topic2' not found; register callback failed\n");
+  }
+  printf("Registered callback for message 'Node1/Node1Topic2'\n");
+
+  // Example demonstrating how to adverstize a topic:
   if( n.advertise( "Node2Topic" ) == false ) {
     printf("Error subscribing to topic.\n");
   }
 
   unsigned int nCount = 0;
 
-  // test the "easy" api -- call Node1->SimpleRpcMethod("test")
+  // Example using the "easy" api -- call Node1->SimpleRpcMethod("test")
   int res;
   n.call_rpc( "Node1/SimpleRpcMethod", "test", res );
   printf("Got %d back from 'Node1/SimpleRpcMethod'\n", res);
 
-  // now make a mistake
+  // Example: make a mistake
   n.call_rpc( "Node1/SimpleRpcMethod2", "test", res );
 
   while(1) {
