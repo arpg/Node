@@ -5,24 +5,38 @@ Node is a simple serverless pub/sub and rpc communication library.
 
 The API is simple, e.g.,:
 
-main()
-{
-  node::node n("my_node");
-  ...
-  n.subscribe( "other_node/other_topic" );
-  ...
-  n.advertise( "my_topic" );
-  ...
-  n.provide_rpc( "my_rpc_method", <function>, <user_data> );
-  ...
-  n.call_rpc( "other_node/rpc_method", <input>, <output> );
-  ...
-  n.publish( "my_topic", <message> );
-  ...
-  n.receive( "other_node/other_topic", <message> );
-  ...
-  n.register_callback( "other_node/other_topic", <callback_function> );
-}
+    main()
+    {
+        node::node n("my_node");
+  
+        ...
+  
+        n.subscribe( "other_node/other_topic" );
+  
+        ...
+  
+          n.advertise( "my_topic" );
+  
+        ...
+        
+        n.provide_rpc( "my_rpc_method", <function>, <user_data> );
+        
+        ...
+        
+        n.call_rpc( "other_node/rpc_method", <input>, <output> );
+        
+        ...
+        
+        n.publish( "my_topic", <message> );
+        
+        ...
+        
+        n.receive( "other_node/other_topic", <message> );
+        
+        ...
+  
+        n.register_callback( "other_node/other_topic", <callback_function> );
+    }
 
 
 Node uses:
