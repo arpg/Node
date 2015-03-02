@@ -23,6 +23,17 @@
  *	BSDI ifaddrs.h,v 2.5 2000/02/23 14:51:59 dab Exp
  */
 
+/*
+android-ifaddrs
+===============
+
+An implementation of getifaddrs() for Android, since the NDK does not natively support it.
+
+Works just like you would expect on regular Linux. License information is present in each file (BSD license).
+
+Originally found at: [https://github.com/kmackay/android-ifaddrs]
+*/
+
 #ifndef	_IFADDRS_H_
 #define	_IFADDRS_H_
 

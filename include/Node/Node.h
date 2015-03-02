@@ -171,7 +171,7 @@ class node {
   bool receive(const std::string& resource, zmqpp::message& zmq_msg);
 
   template<class Callbackmsg>
-  bool RegisterCallback(const std::string &resource, TopicCallback func);
+  bool register_callback(const std::string &resource, TopicCallback func);
 
   /// Figure out the network name of this machine
   std::string _GetHostIP(const std::string& sPreferredInterface = "eth");
@@ -452,7 +452,7 @@ bool node::provide_rpc(const std::string& function_name,
 
 
 template<class Callbackmsg>
-bool node::RegisterCallback(const std::string &resource, TopicCallback func) {
+bool node::register_callback(const std::string &resource, TopicCallback func) {
   std::string topicResource = kTopicScheme + resource;
 
   auto it = topics_.find(topicResource);

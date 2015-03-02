@@ -1,10 +1,10 @@
 cmake_policy( SET CMP0048 NEW ) # for project versioning
 project(Node VERSION 0.3 )
-cmake_minimum_required( VERSION 3.0 )
+cmake_minimum_required( VERSION 2.8 )
 enable_testing()
 
 # Add to module path, so we can find our cmake modules
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
 
 include(def_library)
 include(export_package)
@@ -14,6 +14,8 @@ string( TOLOWER ${PROJECT_NAME} LIBRARY_NAME )
 if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOS_OBJECT_USE_OBJC=0")
 endif()
+
+#SET(BUILD_SHARED_LIBS ON)
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-unused-parameter")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare")
@@ -72,16 +74,11 @@ set(NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h include/Node/crc.h ${P
 set(NODE_SRCS src/Node.cpp src/ZeroConf.cpp src/crc_16.c src/crc_16f.c src/crc_32.c ${PROTO_SRCS})
 
 if(ANDROID)
-  list(APPEND NODE_HDRS android-ifaddrs/ifaddrs.h)
-  list(APPEND NODE_SRCS android-ifaddrs/ifaddrs.c)
-  include_directories(SYSTEM android-ifaddrs)
-  list(APPEND PROJ_INCLUDE_DIRS android-ifaddrs)
+  list(APPEND NODE_HDRS include/Node/ifaddrs.h)
+  list(APPEND NODE_SRCS src/ifaddrs.c)
 endif()
 
 include_directories(${PROJ_INCLUDE_DIRS})
-
-# not so sure we need this...
-#add_subdirectory(zmqpp)
 
 # Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
@@ -96,7 +93,6 @@ set(EXPORT_NODE_INC
 def_library(${LIBRARY_NAME}
   SOURCES ${NODE_HDRS} ${NODE_SRCS}
   LINK_LIBS ${PROJ_LIBRARIES} miniglog
-#  DEPENDS zmqpp
   PACKAGE Node
   )
 
@@ -113,6 +109,6 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h"
 
 # For the examples to find this and only this version of Node
 set(Node_DIR ${CMAKE_CURRENT_BINARY_DIR})
-add_subdirectory(Examples)
-# add_subdirectory(Testing)
+add_subdirectory(examples)
+# add_subdirectory(testing)
 

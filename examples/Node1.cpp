@@ -9,7 +9,7 @@
 #include <Node/Node.h>
 
 #include <stdio.h>
-#include <chrono>
+#include <chrono> // for std::chrono::sleep
 #include <thread>
 
 using namespace std;
@@ -17,7 +17,7 @@ using namespace std;
 string gText = "Hello";
 
 ///////////////////////////////////////////////////////////
-// nice simple remote procedure call
+/// Example of a simple remote procedure call:
 int SimpleRpcMethod( const std::string& sStr )
 {
   printf("int SimpleRpcPMethod( \"%s\" ) called\n", sStr.c_str() );
@@ -25,6 +25,7 @@ int SimpleRpcMethod( const std::string& sStr )
 }
 
 ///////////////////////////////////////////////////////////
+/// Example of a generic protbuf-in, probut-out rpc method:
 void RpcMethod( Msg& Req, Msg& Rep, void* )
 {
   // print value we got from network
@@ -42,11 +43,11 @@ int main( int, char** )
 {
   string sNodeName = "Node1";
 
-  // initialize node
+  // initialize a node
   node::node n;
 
   n.set_verbosity(2); // be a bit noisy
-  n.init( sNodeName );
+  n.init( sNodeName ); // name it -- visible to all other nodes
 
   // set up a publisher
   n.advertise( "Node1Topic" );
