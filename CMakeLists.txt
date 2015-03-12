@@ -23,7 +23,8 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-par
 find_package(ZeroMQ REQUIRED)
 find_package(ZeroMQPP REQUIRED)
 find_package(Protobuf REQUIRED)
-find_package(MINIGLOG REQUIRED)
+find_package(GFLAGS REQUIRED)
+find_package(GLOG REQUIRED)
 
 if(NOT APPLE)
   find_package(DNSSD REQUIRED)
@@ -43,10 +44,9 @@ set(PROJ_INCLUDE_DIRS
   ${Avahi_INCLUDE_DIRS}
   ${PROTOBUF_INCLUDE_DIRS}
   ${Node_BINARY_DIR}
-  ${Node_SOURCE_DIR}
   ${Node_SOURCE_DIR}/include
-  ${MINIGLOG_INCLUDE_DIRS}
-#  ${CMAKE_CURRENT_SOURCE_DIR}/zmqpp/src
+  ${GFlags_INCLUDE_DIRS}
+  ${GLOG_INCLUDE_DIRS}
   )
 
 set(PROJ_LIBRARIES
@@ -54,6 +54,8 @@ set(PROJ_LIBRARIES
   ${ZeroMQ_LIBRARIES}
   ${ZeroMQPP_LIBRARIES}
   ${AVAHI_LIBRARIES}
+  ${GFlags_LIBRARIES}
+  ${GLOG_LIBRARIES}
   dl
   )
 
@@ -68,10 +70,10 @@ if(ANDROID)
     find_host_package( Protobuf REQUIRED)
 endif()
 
-PROTOBUF_GENERATE_CPP(PROTO_HDRS PROTO_SRCS NodeMessages.proto)
+PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS NodeMessages.proto)
 
-set(NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h include/Node/crc.h ${PROTO_HDRS})
-set(NODE_SRCS src/Node.cpp src/ZeroConf.cpp src/crc_16.c src/crc_16f.c src/crc_32.c ${PROTO_SRCS})
+set( NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h include/Node/crc.h ${PROTO_HDRS} )
+set( NODE_SRCS src/Node.cpp src/ZeroConf.cpp src/crc_16.c src/crc_16f.c src/crc_32.c ${PROTO_SRCS} )
 
 if(ANDROID)
   list(APPEND NODE_HDRS include/Node/ifaddrs.h)
@@ -80,7 +82,6 @@ endif()
 
 include_directories(${PROJ_INCLUDE_DIRS})
 
-# Create the NODEConfig.cmake file for the build tree.
 set(EXPORT_NODE_INC
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${Node_SOURCE_DIR}/include
@@ -88,11 +89,12 @@ set(EXPORT_NODE_INC
   ${PROTOBUF_INCLUDE_DIRS}
   ${ZeroMQ_INCLUDE_DIRS}
   ${ZeroMQPP_INCLUDE_DIRS}
+  ${GLOG_INCLUDE_DIRS}
   )
 
 def_library(${LIBRARY_NAME}
   SOURCES ${NODE_HDRS} ${NODE_SRCS}
-  LINK_LIBS ${PROJ_LIBRARIES} miniglog
+  LINK_LIBS ${PROJ_LIBRARIES}
   PACKAGE Node
   )
 
@@ -103,12 +105,9 @@ export_package(Node
   INCLUDE_DIRS ${EXPORT_NODE_INC}
   )
 
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h"
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${LIBRARY_NAME}
-  )
-
 # For the examples to find this and only this version of Node
 set(Node_DIR ${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(examples)
+
 # add_subdirectory(testing)
 

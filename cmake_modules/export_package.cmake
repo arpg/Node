@@ -1,16 +1,17 @@
-#######################################################################################
-# export_package.cmake - Functions for easy package exporting	     		       #
-# 								     		       #
-# export_package - Takes a package name and the following optional arguments: 	       #
-#   - TARGETS: A list of all the targets to export with this package 		       #
-#   - DEPENDS: A list of all the targets that this package depends                    #
-#              on from outside its directory 		                               #
-#   - VERSION: A version string for the package			     	       #
-#   - INCLUDE_DIRS: The include directories to export.		     		       #
-#   - LINK_DIRS: The link directories where libraries can be found   		       #
-#   - LIBRARIES: The libraries to export in ${package}_LIBRARIES		       #
-#   - LIBRARY: A library to export in ${package}_LIBRARY    		               #
-#######################################################################################
+################################################################################
+# export_package.cmake - Functions for easy package exporting	
+#
+# export_package - Takes a package name and the following optional arguments:
+#   - TARGETS: A list of all the targets to export with this package
+#   - DEPENDS: A list of all the targets that this package depends 
+#              on from outside its directory. 
+#   - VERSION: A version string for the package.
+#   - INCLUDE_DIRS: The include directories to export.
+#   - LINK_DIRS: The link directories where libraries can be found.
+#   - LIBRARIES: The libraries to export in ${package}_LIBRARIES.
+#   - LIBRARY: A library to export in ${package}_LIBRARY.
+#
+################################################################################
 include(CMakeParseArguments)
 
 get_filename_component(modules_dir ${CMAKE_CURRENT_LIST_FILE} PATH)
@@ -47,7 +48,6 @@ function(export_package package)
     ${CMAKE_CURRENT_BINARY_DIR}/${package}Config.cmake @ONLY IMMEDIATE)
 
   # Install tree config
-  set(EXPORT_PACKAGE_INC "\${CALIBU_CMAKE_DIR}/${REL_INCLUDE_DIR}")
   configure_file(${modules_dir}/PackageConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${package}Config.cmake @ONLY)
 
@@ -59,6 +59,10 @@ function(export_package package)
   file(RELATIVE_PATH REL_INCLUDE_DIR
     "${CMAKE_INSTALL_PREFIX}/${CMAKECONFIG_INSTALL_DIR}"
     "${CMAKE_INSTALL_PREFIX}/include")
+
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${package}Targets.cmake"
+    DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
 
   if(PACKAGE_TARGETS)
     file(REMOVE "${CMAKE_CURRENT_BINARY_DIR}/${package}Targets.cmake")
@@ -73,4 +77,6 @@ function(export_package package)
   install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${package}Config.cmake"
     DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
+
 endfunction()
+

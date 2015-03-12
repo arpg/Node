@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <iostream>
-#include <miniglog/logging.h>
+#include <glog/logging.h>
 
 #ifdef HAVE_DNSSD
 #include <dns_sd.h>
@@ -278,7 +278,7 @@ void ZeroConf::ResolveReplyCallback(
   url.host = inet_ntoa(*in);
   url.port = PortAsNumber;
 
-  LG << "DNS resolved service URL " << url;
+  LOG(INFO) << "DNS resolved service URL " << url;
 
   // add to list if not seen already
   bool bInList = false;

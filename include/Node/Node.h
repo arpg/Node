@@ -39,7 +39,7 @@
 #include <thread>
 
 #include <google/protobuf/message.h>
-#include <miniglog/logging.h>
+#include <glog/logging.h>
 #include <NodeConfig.h>
 #include <NodeMessages.pb.h>
 #include <Node/ZeroConf.h>
@@ -475,7 +475,7 @@ bool node::register_callback(const std::string &resource, TopicCallback func) {
       std::bind(&node::TopicThread, this, resource));
   it->second->callback = tcd;
 
-  LOG(INFO) << "Registered callback for '" << topicResource << "'";
+  VLOG(google::INFO) << "Registered callback for '" << topicResource << "'";
   return true;
 }
 }  // end namespace node
