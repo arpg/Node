@@ -23,7 +23,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-unused-par
 find_package(ZeroMQ REQUIRED)
 find_package(ZeroMQPP REQUIRED)
 find_package(Protobuf REQUIRED)
-find_package(GFLAGS REQUIRED)
+find_package(GFlags REQUIRED)
 find_package(GLOG REQUIRED)
 
 if(NOT APPLE)
@@ -89,6 +89,7 @@ set(EXPORT_NODE_INC
   ${PROTOBUF_INCLUDE_DIRS}
   ${ZeroMQ_INCLUDE_DIRS}
   ${ZeroMQPP_INCLUDE_DIRS}
+  ${GFlags_INCLUDE_DIRS}
   ${GLOG_INCLUDE_DIRS}
   )
 
