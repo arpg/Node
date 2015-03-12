@@ -85,6 +85,8 @@ function(def_library lib)
 	LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
 	)
+      install( FILES ${lib_SOURCES}
+          DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Node )
     endif()
   endif()
 endfunction()
