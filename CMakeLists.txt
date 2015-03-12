@@ -24,7 +24,7 @@ find_package(ZeroMQ REQUIRED)
 find_package(ZeroMQPP REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(GFlags REQUIRED)
-find_package(GLOG REQUIRED)
+find_package(GLog REQUIRED)
 
 if(NOT APPLE)
   find_package(DNSSD REQUIRED)
@@ -53,9 +53,9 @@ set(PROJ_LIBRARIES
   ${PROTOBUF_LIBRARY}
   ${ZeroMQ_LIBRARIES}
   ${ZeroMQPP_LIBRARIES}
-  ${AVAHI_LIBRARIES}
+  ${Avahi_LIBRARIES}
   ${GFlags_LIBRARIES}
-  ${GLOG_LIBRARIES}
+  ${GLog_LIBRARIES}
   dl
   )
 
@@ -90,7 +90,7 @@ set(EXPORT_NODE_INC
   ${ZeroMQ_INCLUDE_DIRS}
   ${ZeroMQPP_INCLUDE_DIRS}
   ${GFlags_INCLUDE_DIRS}
-  ${GLOG_INCLUDE_DIRS}
+  ${GLog_INCLUDE_DIRS}
   )
 
 def_library(${LIBRARY_NAME}
