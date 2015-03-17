@@ -26,6 +26,7 @@ The API is simple, e.g.,:
 
 
 Node uses:
+
 1) ZeroMQ for it's messaging layer.
 
 2) Protocol buffers for it's XDR and data marshalling.
