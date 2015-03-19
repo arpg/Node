@@ -24,7 +24,7 @@ find_package(ZeroMQ REQUIRED)
 find_package(ZeroMQPP REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(GFlags REQUIRED)
-find_package(GLOG REQUIRED)
+find_package(GLog REQUIRED)
 
 if(NOT APPLE)
   find_package(DNSSD REQUIRED)

@@ -2,7 +2,7 @@ include(def_executable)
 
 find_package(Node)
 find_package(Protobuf)
-find_package(GLOG)
+find_package(GLog)
 
 include_directories(${Node_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
