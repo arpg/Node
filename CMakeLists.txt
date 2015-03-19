@@ -1,5 +1,5 @@
-cmake_policy( SET CMP0048 NEW ) # for project versioning
-project(Node VERSION 0.3 )
+
+project(Node)
 cmake_minimum_required( VERSION 2.8 )
 enable_testing()
 
@@ -24,7 +24,7 @@ find_package(ZeroMQ REQUIRED)
 find_package(ZeroMQPP REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(GFlags REQUIRED)
-find_package(GLog REQUIRED)
+find_package(GLOG REQUIRED)
 
 if(NOT APPLE)
   find_package(DNSSD REQUIRED)
@@ -55,7 +55,7 @@ set(PROJ_LIBRARIES
   ${ZeroMQPP_LIBRARIES}
   ${Avahi_LIBRARIES}
   ${GFlags_LIBRARIES}
-  ${GLog_LIBRARIES}
+  ${GLOG_LIBRARIES}
   dl
   )
 
@@ -90,7 +90,7 @@ set(EXPORT_NODE_INC
   ${ZeroMQ_INCLUDE_DIRS}
   ${ZeroMQPP_INCLUDE_DIRS}
   ${GFlags_INCLUDE_DIRS}
-  ${GLog_INCLUDE_DIRS}
+  ${GLOG_INCLUDE_DIRS}
   )
 
 def_library(${LIBRARY_NAME}
