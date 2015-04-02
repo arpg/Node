@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 2.8)                                                   
 
-find_package( NODE REQUIRED )
+# Typically, you'll just call find_package( NODE REQUIRED )
+# but we've taken care of that from the TLD
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")                                  
-
-message( STATUS "NODE_LIBRARIES: ${NODE_LIBRARIES}" )
-message( STATUS "NODE_INCLUDE_DIRS: ${NODE_INCLUDE_DIRS}" )
 
 include_directories( ${CMAKE_BINARY_DIR}/examples ${NODE_INCLUDE_DIRS} )
 PROTOBUF_GENERATE_CPP( PROTO_SRCS PROTO_HDRS ExampleMessage.proto )

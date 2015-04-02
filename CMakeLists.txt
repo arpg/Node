@@ -29,7 +29,7 @@ endif(NOT APPLE)
 if(DNSSD_FOUND OR APPLE)
   set(HAVE_DNSSD ON)
 endif()
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/NodeConfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/Node/NodeConfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h)
 
 # NB all "REQUIRED" items are for external dependencies -- so make sure not to
 # include non-standard paths (like home directories or build directories).
@@ -52,11 +52,9 @@ if(ANDROID)
     find_host_package( Protobuf REQUIRED)
 endif()
 
-PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS NodeMessages.proto)
-
-set( NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h ${PROTO_HDRS} )
+set( NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h include/Node/Messages.h )
 set( NODE_SRCS src/Node.cpp src/ZeroConf.cpp src/crc_16.c src/crc_16f.c
-    src/crc_32.c ${PROTO_SRCS} )
+    src/crc_32.c src/Messages.cpp )
 
 if(ANDROID)
   list(APPEND NODE_HDRS include/Node/ifaddrs.h)
@@ -67,7 +65,7 @@ include_directories(${REQUIRED_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR} )
 add_library( node ${NODE_SRCS} )
 target_link_libraries( node ${REQUIRED_LIBRARIES} )
-  
+ 
 # Install library and create a pkg-config package.
 install_library(
   LIBRARY node
@@ -85,6 +83,7 @@ install_library(
 set( NODE_LIBRARIES ${REQUIRED_LIBRARIES} node ) 
 set( NODE_INCLUDE_DIRS ${REQUIRED_INCLUDE_DIRS} ) 
 set( NODE_DIR ${CMAKE_CURRENT_BINARY_DIR} )
+link_libraries( ${REQUIRED_LIBRARIES} node ) 
 add_subdirectory( examples )
 
 # add_subdirectory(testing)
