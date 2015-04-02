@@ -7,6 +7,5 @@ Name: lib@PACKAGE_LIBRARY@
 Description: @PACKAGE_DESCRIPTION@
 Version: @PACKAGE_VERSION@
 Cflags: -I@PACKAGE_CFLAGS@
-Libs: -L${libdir} -l@PACKAGE_LIBRARY@
-Libs.private: @PACKAGE_PRIVATE_LIBS@
+Libs: -L${libdir} @PACKAGE_PRIVATE_LIBS@ -l@PACKAGE_LIBRARY@ 
 
