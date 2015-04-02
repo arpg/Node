@@ -35,7 +35,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/NodeConfig.h.in ${CMAKE_CURRENT_BINAR
 # include non-standard paths (like home directories or build directories).
 set(REQUIRED_LIBRARIES ${PROTOBUF_LIBRARY} ${ZeroMQ_LIBRARIES}
     ${ZeroMQPP_LIBRARIES} ${Avahi_LIBRARIES} ${GFlags_LIBRARIES}
-    ${GLog_LIBRARIES} dl)
+    ${GLOG_LIBRARIES} dl)
 set(REQUIRED_INCLUDE_DIRS ${ZeroMQ_INCLUDE_DIRS} ${ZeroMQPP_INCLUDE_DIRS}
     ${Avahi_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIRS} ${GFlags_INCLUDE_DIRS}
     ${GLOG_INCLUDE_DIRS})

@@ -4,6 +4,9 @@ find_package( NODE REQUIRED )
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")                                  
 
+message( STATUS "NODE_LIBRARIES: ${NODE_LIBRARIES}" )
+message( STATUS "NODE_INCLUDE_DIRS: ${NODE_INCLUDE_DIRS}" )
+
 include_directories( ${CMAKE_BINARY_DIR}/examples ${NODE_INCLUDE_DIRS} )
 PROTOBUF_GENERATE_CPP( PROTO_SRCS PROTO_HDRS ExampleMessage.proto )
 
