@@ -1,28 +1,18 @@
-include(def_executable)
+cmake_minimum_required(VERSION 2.8)                                                   
 
-find_package(Node)
-find_package(Protobuf)
-find_package(GLOG)
+find_package( NODE REQUIRED )
 
-include_directories(${Node_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")                                  
 
-include_directories(${CMAKE_BINARY_DIR}/Examples)
-PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS ExampleMessage.proto)
+include_directories( ${CMAKE_BINARY_DIR}/examples ${NODE_INCLUDE_DIRS} )
+PROTOBUF_GENERATE_CPP( PROTO_SRCS PROTO_HDRS ExampleMessage.proto )
 
-def_executable(Node
-  SOURCES Node.cpp ${PROTO_SRCS}
-  DEPENDS node
-  LINK_LIBS ${GLOG_LIBRARIES} ${PROTOBUF_LIBRARIES}
-  )
+add_executable( NodeExample NodeExample.cpp ${PROTO_SRCS} )
+target_link_libraries( NodeExample ${NODE_LIBRARIES} )
 
-def_executable(Node1
-  SOURCES Node1.cpp ${PROTO_SRCS}
-  DEPENDS node
-  LINK_LIBS ${GLOG_LIBRARIES} ${PROTOBUF_LIBRARIES}
-  )
+add_executable( Node1 Node1.cpp ${PROTO_SRCS} )
+target_link_libraries( Node1 ${NODE_LIBRARIES} )
 
-def_executable(Node2
-  SOURCES Node2.cpp ${PROTO_SRCS}
-  DEPENDS node
-  LINK_LIBS ${GLOG_LIBRARIES} ${PROTOBUF_LIBRARIES}
-  )
+add_executable( Node2 Node2.cpp ${PROTO_SRCS} )
+target_link_libraries( Node2 ${NODE_LIBRARIES} )
+

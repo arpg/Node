@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include <thread>
-#include <NodeConfig.h>
 
 typedef struct _DNSServiceRef_t* DNSServiceRef;
 typedef uint32_t DNSServiceFlags;
@@ -40,13 +39,7 @@ class ZeroConf {
 
   ///
   /// Returns true if ZeroConf is connected to the DNS and Avahi system
-  bool IsValid() {
-#ifdef HAVE_DNSSD
-    return true;
-#else
-    return false;
-#endif
-  }
+  bool IsValid();
 
   /// Generic interface to just register a service and bail
   bool RegisterService(

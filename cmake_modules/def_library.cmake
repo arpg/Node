@@ -7,7 +7,7 @@ function(def_library lib)
 
   set(LIB_OPTIONS)
   set(LIB_SINGLE_ARGS PACKAGE)
-  set(LIB_MULTI_ARGS SOURCES DEPENDS CONDITIONS LINK_LIBS)
+  set(LIB_MULTI_ARGS SOURCES INSTALL_FILES DEPENDS CONDITIONS LINK_LIBS)
   cmake_parse_arguments(lib
     "${LIB_OPTIONS}"
     "${LIB_SINGLE_ARGS}"
@@ -15,6 +15,9 @@ function(def_library lib)
     "${ARGN}"
     )
 
+#  message(STATUS "The following files will be installed: ${lib_INSTALL_FILES}")
+#  message(STATUS "sources: ${lib_SOURCES}")
+ 
   if(NOT lib_SOURCES)
     message(FATAL_ERROR "def_library for ${LIB} has an empty source list.")
   endif()
@@ -85,8 +88,8 @@ function(def_library lib)
 	LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
 	)
-      install( FILES ${lib_SOURCES}
+      install( FILES ${lib_INSTALL_FILES}
           DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Node )
-    endif()
+  endif()
   endif()
 endfunction()

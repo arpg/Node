@@ -13,9 +13,12 @@
 #include <iostream>
 #include <glog/logging.h>
 
+#include "NodeConfig.h"
+
 #ifdef HAVE_DNSSD
 #include <dns_sd.h>
 #endif  // HAVE_DNSSD
+
 
 namespace node {
 
@@ -26,6 +29,16 @@ ZeroConf::~ZeroConf() {
     listen_to_server_thread_.join();
   }
 }
+
+bool ZeroConf::IsValid()
+{
+#ifdef HAVE_DNSSD
+  return true;
+#else
+  return false;
+#endif
+}
+
 
 inline void _BrowseReplyCallback(
     DNSServiceRef,
