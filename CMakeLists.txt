@@ -1,5 +1,4 @@
-cmake_policy( SET CMP0048 NEW ) # for project versioning
-project(Node VERSION 0.3 )
+project(Node)
 cmake_minimum_required( VERSION 2.8 )
 enable_testing()
 
@@ -41,8 +40,6 @@ set(REQUIRED_INCLUDE_DIRS ${ZeroMQ_INCLUDE_DIRS} ${ZeroMQPP_INCLUDE_DIRS}
     ${Avahi_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIRS} ${GFlags_INCLUDE_DIRS}
     ${GLOG_INCLUDE_DIRS})
 
-message( STATUS "REQUIRED_LIBRARIES ${REQUIRED_LIBRARIES}" )
-message( STATUS "REQUIRED_INCLUDE_DIRS ${REQUIRED_INCLUDE_DIRS}" )
 
 if(DNSSD_FOUND)
   list(APPEND REQUIRED_INCLUDE_DIRS ${DNSSD_INCLUDE_DIRS})
@@ -74,7 +71,7 @@ target_link_libraries( node ${REQUIRED_LIBRARIES} )
 # Install library and create a pkg-config package.
 install_library(
   LIBRARY node
-  VERSION 2.0
+  VERSION 2.1
   DESCRIPTION "Simple library for RPC and pub/sub."
   HEADERS ${NODE_HDRS}
   HEADER_DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Node
