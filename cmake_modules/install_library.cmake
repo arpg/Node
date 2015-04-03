@@ -49,10 +49,6 @@ function(install_library)
   get_filename_component( _lib ${_target_library} NAME )
   list( APPEND PACKAGE_LIB_DEPENDS ${CMAKE_INSTALL_PREFIX}/lib/${_lib} )
 
-  message( STATUS "depends: ${PACKAGE_LIB_DEPENDS}" )
-
-
-
   # construct Cflags arguments for pkg-config file
   string( CONCAT PACKAGE_CFLAGS ${PACKAGE_CFLAGS} ${CMAKE_C_FLAGS} )
   foreach(var IN LISTS PACKAGE_INCLUDE_DIRS )
