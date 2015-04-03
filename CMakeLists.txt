@@ -4,7 +4,6 @@ enable_testing()
 
 # Add to module path, so we can find our cmake modules
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules )
-include( install_library )
 
 if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOS_OBJECT_USE_OBJC=0")
@@ -31,8 +30,8 @@ if(DNSSD_FOUND OR APPLE)
 endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/Node/NodeConfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/NodeConfig.h)
 
-# NB all "REQUIRED" items are for external dependencies -- so make sure not to
-# include non-standard paths (like home directories or build directories).
+# NB all "REQUIRED" items are for external dependencies -- make sure not to
+# include non-standard paths (like source or build directories).
 set(REQUIRED_LIBRARIES ${PROTOBUF_LIBRARY} ${ZeroMQ_LIBRARIES}
     ${ZeroMQPP_LIBRARIES} ${Avahi_LIBRARIES} ${GFlags_LIBRARIES}
     ${GLOG_LIBRARIES} dl)
@@ -67,16 +66,17 @@ add_library( node ${NODE_SRCS} )
 target_link_libraries( node ${REQUIRED_LIBRARIES} )
  
 # Install library and create a pkg-config package.
-install_library(
-  LIBRARY node
-  VERSION 2.1
-  DESCRIPTION "Simple library for RPC and pub/sub."
-  HEADERS ${NODE_HDRS}
-  HEADER_DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Node
-  INCLUDE_DIRS ${REQUIRED_INCLUDE_DIRS}
-  LIB_DEPENDS ${REQUIRED_LIBRARIES}
-  LINK_DIRS /usr/local/lib
-  )
+include( install_package )
+install_package(
+    PKG_NAME Node
+    LIB_NAME node
+    VERSION 2.1
+    DESCRIPTION "Library for runtime variable editing for fast prototyping."
+    INSTALL_HEADERS ${NODE_HDRS}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Node
+    INCLUDE_DIRS ${REQUIRED_INCLUDE_DIRS}
+    LINK_LIBS ${REQUIRED_LIBRARIES}
+    )
 
 # For the examples to find this version of node, but still have a generic
 # CMakeLists.txt that can be cut-n-paste used as an example for other projects. 
