@@ -73,7 +73,7 @@ install_package(
     VERSION 2.1
     DESCRIPTION "Library for runtime variable editing for fast prototyping."
     INSTALL_INCLUDE_DIR true
-    INSTALL_HEADER_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include/Node
+    INSTALL_HEADER_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include/node
     DESTINATION ${CMAKE_INSTALL_PREFIX}
     INCLUDE_DIRS ${REQUIRED_INCLUDE_DIRS}
     LINK_LIBS ${REQUIRED_LIBRARIES}
