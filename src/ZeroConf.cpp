@@ -13,7 +13,7 @@
 #include <iostream>
 #include <glog/logging.h>
 
-#include "NodeConfig.h"
+#include "Node/NodeConfig.h"
 
 #ifdef HAVE_DNSSD
 #include <dns_sd.h>
