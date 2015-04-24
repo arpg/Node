@@ -1,4 +1,3 @@
-#include <Node/Node.h>
 #include <arpa/inet.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -12,9 +11,10 @@
 #include <sys/types.h>
 #include <glog/logging.h>
 
-#include <Node/TicToc.h>
-#include <Node/ZeroConf.h>
-#include <Node/crc.h>
+#include <node/Node.h>
+#include <node/TicToc.h>
+#include <node/ZeroConf.h>
+#include <node/crc.h>
 
 std::vector<node::node*> g_vNodes;
 

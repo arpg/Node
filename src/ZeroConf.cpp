@@ -1,4 +1,3 @@
-#include <Node/ZeroConf.h>
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/types.h> // for u_char
@@ -13,7 +12,8 @@
 #include <iostream>
 #include <glog/logging.h>
 
-#include "Node/NodeConfig.h"
+#include <node/ZeroConf.h>
+#include <node/NodeConfig.h>
 
 #ifdef HAVE_DNSSD
 #include <dns_sd.h>

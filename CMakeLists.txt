@@ -28,7 +28,7 @@ endif(NOT APPLE)
 if(DNSSD_FOUND OR APPLE)
   set(HAVE_DNSSD ON)
 endif()
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/NodeConfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/Node/NodeConfig.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/NodeConfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/node/NodeConfig.h)
 
 # NB all "REQUIRED" items are for external dependencies -- make sure not to
 # include non-standard paths (like source or build directories).

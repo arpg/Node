@@ -6,7 +6,7 @@
 */
 
 #include "ExampleMessage.pb.h"
-#include <Node/Node.h>
+#include <node/Node.h>
 
 #include <stdio.h>
 #include <chrono> // for std::chrono::sleep

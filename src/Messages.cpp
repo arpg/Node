@@ -2,7 +2,7 @@
 // source: NodeMessages.proto
 
 #define INTERNAL_SUPPRESS_PROTOBUF_FIELD_DEPRECATION
-#include "Node/Messages.h"
+#include "node/Messages.h"
 
 #include <algorithm>
 
