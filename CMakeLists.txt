@@ -60,9 +60,16 @@ if(ANDROID)
   list(APPEND NODE_SRCS src/ifaddrs.c)
 endif()
 
+option( BUILD_SHARED_LIBRARY OFF )
+
 include_directories(${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR})
-add_library( node ${NODE_SRCS} )
+if( BUILD_SHARED_LIBRARY )
+    add_library( node SHARED ${NODE_SRCS} )
+else()
+    add_library( node ${NODE_SRCS} )
+endif()
+
 target_link_libraries( node ${REQUIRED_LIBRARIES} )
 
 # Install library and create a pkg-config package.
