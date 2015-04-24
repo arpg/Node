@@ -31,25 +31,25 @@ function(export_package package)
 
   set(CMAKECONFIG_INSTALL_DIR "lib/cmake/${package}")
   option(EXPORT_${package}
-    "Should the ${package} package be exported for use by other software" ON)
+    "Should the ${package} package be exported for use by other software" OFF)
 
   # Version information
-  if(PACKAGE_VERSION)
-    configure_file(${modules_dir}/PackageConfigVersion.cmake.in
-      "${CMAKE_CURRENT_BINARY_DIR}/${package}ConfigVersion.cmake" @ONLY)
-    install(FILES
-      "${CMAKE_CURRENT_BINARY_DIR}/${package}ConfigVersion.cmake"
-      DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
-  endif()
+#  if(PACKAGE_VERSION)
+#    configure_file(${modules_dir}/PackageConfigVersion.cmake.in
+#      "${CMAKE_CURRENT_BINARY_DIR}/${package}ConfigVersion.cmake" @ONLY)
+#    install(FILES
+#      "${CMAKE_CURRENT_BINARY_DIR}/${package}ConfigVersion.cmake"
+#      DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
+#  endif()
 
   # Build tree config
-  set(EXPORT_PACAKGE_INC PACKAGE_INCLUDE_DIRS)
-  CONFIGURE_FILE(${modules_dir}/PackageConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/${package}Config.cmake @ONLY IMMEDIATE)
+#  set(EXPORT_PACAKGE_INC PACKAGE_INCLUDE_DIRS)
+#  CONFIGURE_FILE(${modules_dir}/PackageConfig.cmake.in
+#    ${CMAKE_CURRENT_BINARY_DIR}/${package}Config.cmake @ONLY IMMEDIATE)
 
   # Install tree config
-  configure_file(${modules_dir}/PackageConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${package}Config.cmake @ONLY)
+#  configure_file(${modules_dir}/PackageConfig.cmake.in
+#    ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${package}Config.cmake @ONLY)
 
   # Add package to CMake package registery for use from the build tree
   if(EXPORT_${package})
@@ -70,13 +70,14 @@ function(export_package package)
       APPEND FILE "${CMAKE_CURRENT_BINARY_DIR}/${package}Targets.cmake")
   endif()
 
-  install(EXPORT ${package} DESTINATION ${CMAKECONFIG_INSTALL_DIR})
-  set("${PACKAGE}_DIR" "${CMAKE_CURRENT_BINARY_DIR}" CACHE PATH
-    "Path to ${package} configuration.")
+#  install(EXPORT ${package} DESTINATION ${CMAKECONFIG_INSTALL_DIR})
+#  set("${PACKAGE}_DIR" "${CMAKE_CURRENT_BINARY_DIR}" CACHE PATH
+#    "Path to ${package} configuration.")
 
-  install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${package}Config.cmake"
-    DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
+  # Install ${package}Config.cmake, which will read ${package}Targets.cmake
+#  install(FILES
+#    "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${package}Config.cmake"
+#    DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
 
 endfunction()
 
