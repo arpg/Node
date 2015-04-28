@@ -12,7 +12,7 @@ add_executable( NodeExample NodeExample.cpp ${PROTO_SRCS} )
 add_executable( Node1 Node1.cpp ${PROTO_SRCS} )
 add_executable( Node2 Node2.cpp ${PROTO_SRCS} )
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
   target_link_libraries( NodeExample ${NODE_LIBRARIES} pthread )
   target_link_libraries( Node1 ${NODE_LIBRARIES} pthread )
   target_link_libraries( Node2 ${NODE_LIBRARIES} pthread )
