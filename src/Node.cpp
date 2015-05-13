@@ -211,10 +211,19 @@ bool node::init(std::string node_name) {
   return true;
 }
 
+// int f(string) specilization
 bool node::provide_rpc(const std::string& name,
                        int (*pFunc)(const std::string&)) {
   return provide_rpc(name, _IntStringFunc, (void*)pFunc);
 }
+
+// void f(void) specilization
+bool node::provide_rpc(const std::string& name,
+                       void (*pFunc)(void)) {
+  return provide_rpc(name, _IntStringFunc, (void*)pFunc);
+}
+
+
 
 bool node::call_rpc(const std::string& rpc_resource,
                     const std::string& input,

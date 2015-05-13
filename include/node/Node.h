@@ -89,6 +89,13 @@ class node {
   bool provide_rpc(const std::string& sName,
                    int (*pFunc)(const std::string&));
 
+  /// Specialization to register a remote procedure call for the
+  // "void f()" signature.
+  //< Input: Function name
+  //< Input: Function pointer
+  bool provide_rpc(const std::string& sName,
+                   void (*pFunc)(void));
+ 
   /// Register a remote procedure call.
   //< Input: Function name
   //< Input: Function pointer
