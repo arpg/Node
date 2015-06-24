@@ -1,10 +1,10 @@
 //
-//   node::Node is a simple peer-to-peer networking tool providing
+//   node::node is a simple peer-to-peer networking tool providing
 //   pub/sub and rpc functionality.  As ever, the goal for node it so
 //   be simple, yet powerful.  As an example, here is how the API can
 //   be used:
 //
-//   node::Node n1;
+//   node::node n1;
 //   n1.init("NodeName1");
 //   n1.advertise("LeftImage");
 //   n1.publish("LeftImage", data); // data needs to be a zmq msg or google pb
