@@ -14,7 +14,7 @@
 #include <node/Node.h>
 #include <node/TicToc.h>
 #include <node/ZeroConf.h>
-#include <node/crc.h>
+#include "crc.h"
 
 std::vector<node::node*> g_vNodes;
 
