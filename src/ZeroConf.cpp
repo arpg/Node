@@ -1,3 +1,16 @@
+
+// Fix to compile on OS X with GCC.  see:
+// http://hamelot.co.uk/programming/osx-gcc-dispatch_block_t-has-not-been-declared-invalid-typedef/ 
+// and
+// http://stackoverflow.com/questions/26527077/compiling-with-accelerate-framework-on-osx-yosemite 
+#if defined(__GNUC__) || defined(__GNUG__)
+  #ifndef __has_extension
+    #define __has_extension(x) 0
+  #endif
+  #define vImage_Utilities_h
+  #define vImage_CVUtilities_h
+#endif
+
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/types.h> // for u_char
