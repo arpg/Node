@@ -57,9 +57,12 @@ set( _PROTO_SRCS
     src/NodeMessages.proto
 )
 
-PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS "/include/${LIBRARY_NAME}" ${_PROTO_SRCS})
+PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS "include/${LIBRARY_NAME}" "${_PROTO_SRCS}")
 
-set( GENERATED_HEADERS ${PROTO_HDRS} )
+set( GENERATED_HEADERS
+    ${PROTO_HDRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/include/node/NodeConfig.h
+    )
 
 set( NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h ${GENERATED_HEADERS} )
 set( NODE_SRCS src/Node.cpp src/ZeroConf.cpp src/crc_16.c src/crc_16f.c
@@ -72,7 +75,9 @@ endif()
 
 option( BUILD_SHARED_LIBRARY OFF )
 
-include_directories(${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(${REQUIRED_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}/include/node)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # for protobuf
 include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR})
 if( BUILD_SHARED_LIBRARY )
@@ -91,7 +96,6 @@ install_package(
     VERSION 2.1
     DESCRIPTION "Library for runtime variable editing for fast prototyping."
     INSTALL_INCLUDE_DIR true
-    INSTALL_HEADER_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include/node
     INSTALL_GENERATED_HEADERS ${GENERATED_HEADERS}
     DESTINATION ${CMAKE_INSTALL_PREFIX}
     INCLUDE_DIRS ${REQUIRED_INCLUDE_DIRS}
