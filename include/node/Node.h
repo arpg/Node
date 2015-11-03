@@ -40,7 +40,7 @@
 
 #include <google/protobuf/message.h>
 #include <glog/logging.h>
-#include <node/Messages.h> // manually generated with protoc
+#include <NodeMessages.pb.h> // manually generated with protoc
 #include <node/ZeroConf.h>
 #include <zmqpp/zmqpp.hpp>
 
