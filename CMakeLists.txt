@@ -5,6 +5,8 @@ enable_testing()
 # Add to module path, so we can find our cmake modules
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules )
 
+STRING( TOLOWER ${PROJECT_NAME} LIBRARY_NAME )
+
 if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOS_OBJECT_USE_OBJC=0")
 endif()
@@ -52,12 +54,15 @@ if(ANDROID)
 endif()
 
 set( _PROTO_SRCS
-    ${CMAKE_SOURCE_DIR}/src/NodeMessages.proto
+    src/NodeMessages.proto
 )
 
-PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS ${_PROTO_SRCS})
+PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS "include/${LIBRARY_NAME}" "${_PROTO_SRCS}")
 
-set( GENERATED_HEADERS ${PROTO_HDRS} )
+set( GENERATED_HEADERS
+    ${PROTO_HDRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/include/node/NodeConfig.h
+    )
 
 set( NODE_HDRS include/Node/Node.h include/Node/ZeroConf.h ${GENERATED_HEADERS} )
 set( NODE_SRCS src/Node.cpp src/ZeroConf.cpp src/crc_16.c src/crc_16f.c
@@ -70,7 +75,9 @@ endif()
 
 option( BUILD_SHARED_LIBRARY OFF )
 
-include_directories(${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(${REQUIRED_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}/include/node)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # for protobuf
 include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR})
 if( BUILD_SHARED_LIBRARY )
@@ -84,12 +91,11 @@ target_link_libraries( node ${REQUIRED_LIBRARIES} )
 # Install library and create a pkg-config package.
 include( install_package )
 install_package(
-    PKG_NAME Node
-    LIB_NAME node
+    PKG_NAME ${PROJECT_NAME}
+    LIB_NAME ${LIBRARY_NAME}
     VERSION 2.1
     DESCRIPTION "Library for runtime variable editing for fast prototyping."
     INSTALL_INCLUDE_DIR true
-    INSTALL_HEADER_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include/node
     INSTALL_GENERATED_HEADERS ${GENERATED_HEADERS}
     DESTINATION ${CMAKE_INSTALL_PREFIX}
     INCLUDE_DIRS ${REQUIRED_INCLUDE_DIRS}
