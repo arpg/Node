@@ -34,7 +34,7 @@ static void buffer_deleter(void* buf) {
 
 inline bool add_proto(const google::protobuf::Message& proto,
                       zmqpp::message* out) {
-  int proto_size = proto.ByteSize();
+  size_t proto_size = proto.ByteSize();
   char* buffer = new char[proto_size];
   bool success = proto.SerializeToArray(buffer, proto_size);
   if (!success) {
