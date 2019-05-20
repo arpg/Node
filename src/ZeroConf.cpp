@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <glog/logging.h>
+#include <functional>
 
 #include <node/ZeroConf.h>
 #include <node/NodeConfig.h>
